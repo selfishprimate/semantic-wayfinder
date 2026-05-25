@@ -1,0 +1,9 @@
+{
+  "version": "0.1.0",
+  "casing": "camelCase",
+  "prefix": null,
+  "scope": "sections",
+  "editors": ["claude-code"],
+  "createdAt": "2026-05-25T00:00:00.000Z",
+  "lastRunAt": "2026-05-25T00:00:00.000Z"
+}
