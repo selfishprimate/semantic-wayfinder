@@ -10,13 +10,13 @@ homepage: https://github.com/selfishprimate/semantic-wayfinder
 
 A component-identity layer for AI-assisted codebases. Adds a single semantic class to each component (e.g. `aboutHero`, `dashboardSidebar`, `pricingFAQ`) so agents can `grep` and target precisely instead of reading entire files trying to figure out which `<section>` you meant.
 
-The skill is invoked with a single command: `/wayfind`. On first run it bootstraps the project. On every later run it only processes what's new or changed. Users do not need to think about modes — the command figures out where it is.
+The skill is invoked with a single command: `/wayfinder`. On first run it bootstraps the project. On every later run it only processes what's new or changed. Users do not need to think about modes — the command figures out where it is.
 
 ## When to use this skill
 
 Invoke this skill when the user:
 
-- Types `/wayfind` or `/wayfind <path>` in Claude Code
+- Types `/wayfinder` or `/wayfinder <path>` in Claude Code
 - Asks to "tag components" or "add semantic class names" to their codebase
 - Mentions Semantic Wayfinding by name
 - Wants AI agents to find their components more reliably
@@ -177,7 +177,7 @@ The semantic class is your fastest path. Reach for `grep` (or your equivalent se
 
 ### When the user wants to bulk-tag the codebase
 
-They should run `/wayfind` (the Semantic Wayfinder skill). Don't try to retroactively tag the whole codebase yourself in a single conversation; that's what the skill is for. Just keep new code Wayfinder-compliant.
+They should run `/wayfinder` (the Semantic Wayfinder skill). Don't try to retroactively tag the whole codebase yourself in a single conversation; that's what the skill is for. Just keep new code Wayfinder-compliant.
 ```
 
 ---
@@ -298,7 +298,7 @@ Grep the identity class. Single hit, single edit. Avoid scanning full files when
 
 ### Bulk operations
 
-Full-codebase tagging is handled by the Semantic Wayfinder tooling (`/wayfind` skill or `npx semantic-wayfinder` CLI when available). Do not perform bulk retroactive tagging in normal task execution; ensure newly generated code is compliant.
+Full-codebase tagging is handled by the Semantic Wayfinder tooling (`/wayfinder` skill or `npx semantic-wayfinder` CLI when available). Do not perform bulk retroactive tagging in normal task execution; ensure newly generated code is compliant.
 ```
 
 ### Step 7 — Tag the existing codebase
@@ -321,9 +321,9 @@ chore: set up semantic wayfinder
 
 Tell the user what happened and what to do next:
 
-> Done. Tagged `N` components, skipped `M` ambiguous ones (you can run `/wayfind` again to revisit them).
+> Done. Tagged `N` components, skipped `M` ambiguous ones (you can run `/wayfinder` again to revisit them).
 >
-> From now on, when an AI agent in this project creates new components, it'll add semantic classes automatically. When you've made significant changes and want to catch any drift, run `/wayfind` again — it will only touch what's new or changed.
+> From now on, when an AI agent in this project creates new components, it'll add semantic classes automatically. When you've made significant changes and want to catch any drift, run `/wayfinder` again — it will only touch what's new or changed.
 
 ---
 
@@ -511,8 +511,8 @@ If anything went wrong (parse errors, unreadable files, git problems), report it
 
 ## Flags
 
-- `/wayfind` — default behavior (bootstrap or incremental, auto-detected)
-- `/wayfind <path>` — limit work to a specific directory
-- `/wayfind --reset` — wipe `.wayfinder.json` and re-run bootstrap (asks for confirmation first)
-- `/wayfind --dry-run` — analyze and report what would change, without writing any files
-- `/wayfind --check` — same as `--dry-run` but exits with non-zero status if untagged components exist (useful for CI)
+- `/wayfinder` — default behavior (bootstrap or incremental, auto-detected)
+- `/wayfinder <path>` — limit work to a specific directory
+- `/wayfinder --reset` — wipe `.wayfinder.json` and re-run bootstrap (asks for confirmation first)
+- `/wayfinder --dry-run` — analyze and report what would change, without writing any files
+- `/wayfinder --check` — same as `--dry-run` but exits with non-zero status if untagged components exist (useful for CI)

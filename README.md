@@ -50,7 +50,7 @@ cp -r path/to/semantic-wayfinder/.gemini/skills/wayfinder \
 Then open your project in your editor and run:
 
 ```
-/wayfind
+/wayfinder
 ```
 
 That's it. The wizard takes about a minute on first run; subsequent runs are incremental and silent.
@@ -59,7 +59,7 @@ If you don't use any of those three editors yet, the CLI is on the way — see [
 
 ## How it works
 
-`/wayfind` runs in one of two modes, auto-detected:
+`/wayfinder` runs in one of two modes, auto-detected:
 
 | Run | What happens |
 |---|---|
@@ -70,7 +70,7 @@ Pass `--reset` if you ever want to start the wizard over.
 
 > **Note — two different file types, easy to confuse:**
 >
-> - `SKILL.md` files in `.claude/`, `.agents/`, `.gemini/` are the **Wayfinder tool itself** — the instructions the agent reads when you run `/wayfind`.
+> - `SKILL.md` files in `.claude/`, `.agents/`, `.gemini/` are the **Wayfinder tool itself** — the instructions the agent reads when you run `/wayfinder`.
 > - `CLAUDE.md`, `GEMINI.md`, `AGENTS.md` in your project root are **rule files Wayfinder writes for you** during bootstrap, telling future agent work in this project to keep using the convention.
 >
 > The skill is the tool. The rule files are the policy.
