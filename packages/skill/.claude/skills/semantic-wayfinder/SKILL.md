@@ -104,38 +104,37 @@ This file is the source of truth for every subsequent run. Do not gitignore it �
 
 ### Step 6 — Write instruction files
 
-For each selected editor, write a file in the project root with the Semantic Wayfinding instruction set:
+For each selected editor, read the matching template from the skill's `templates/` directory, fill in the placeholders from the user's config, and write the result into the project root.
 
-- Claude Code → `CLAUDE.md` (if it already exists, append a clearly delimited Semantic Wayfinder section rather than overwriting)
-- Gemini CLI → `GEMINI.md`
-- Codex CLI / generic → `AGENTS.md`
+| Editor | Source template | Destination file |
+|---|---|---|
+| Claude Code | `templates/CLAUDE.md.template` | `CLAUDE.md` |
+| Gemini CLI | `templates/GEMINI.md.template` | `GEMINI.md` |
+| Codex CLI / generic | `templates/AGENTS.md.template` | `AGENTS.md` |
 
-The content of each file should include:
+The templates live alongside this skill at `packages/skill/templates/` in the Semantic Wayfinder repo. When the skill is installed in a user's project (at `.claude/skills/semantic-wayfinder/`), the templates may need to be co-located — either copied next to `SKILL.md` during install, or fetched from the user's clone of the Wayfinder repo. The skill should locate them in this priority order:
 
-```markdown
-## Semantic Wayfinding Rules
+1. `.claude/skills/semantic-wayfinder/templates/` (co-located with the skill)
+2. Any `semantic-wayfinder/packages/skill/templates/` path in the project tree
+3. As a fallback, generate the file content inline from the placeholder mapping below (warn the user that templates were not found)
 
-This project uses Semantic Wayfinder to give components identity classes.
+**Placeholder mapping**, filled from `.wayfinder.json`:
 
-When you create or modify components, always add a semantic identifier class
-at the start of the className list. Follow these conventions:
+| Placeholder | Source | Example |
+|---|---|---|
+| `{{CASING}}` | `config.casing` | `camelCase` |
+| `{{PREFIX}}` | `config.prefix` or "none" | `wf-`, `myco-`, or `none` |
+| `{{SCOPE}}` | `config.scope` | `sections` or `all` |
+| `{{SCOPE_DESCRIPTION}}` | Mapped from scope | `"tag <section>, <header>, <aside>, <nav>, <footer>, <main>, and top-level layout <div>s"` (for `sections`) or `"all of the above plus reusable cards, banners, and groups inside identifiable contexts"` (for `all`) |
+| `{{PREFIX_EXAMPLE}}` | Prefix formatted for the casing | `wf-` (kebab + wf), `wf` (camel + wf), `` (none) |
+| `{{EXAMPLE_HERO}}` | Live example | `aboutHero`, `wf-aboutHero`, or `wfAboutHero` |
+| `{{EXAMPLE_TESTIMONIALS}}` | Live example | `aboutTestimonials`, `wf-about-testimonials`, etc. |
+| `{{EXAMPLE_SIDEBAR}}` | Live example | `dashboardSidebar`, etc. |
+| `{{EXAMPLE_FAQ}}` | Live example | `pricingFAQ`, etc. |
 
-- Casing: <camelCase | kebab-case from config>
-- Prefix: <"wf-" | custom | none>
-- Scope: <sections only | all meaningful components>
-
-Naming pattern: <prefix><pageContext><componentRole>
-
-Examples for this project:
-- About page hero → `<prefix>aboutHero`
-- Pricing page testimonials → `<prefix>pricingTestimonials`
-- Reusable card inside a feature grid → `<prefix>featureCard`
-
-Do not replace existing semantic classes. Do not remove utility classes —
-the semantic class goes first, utilities follow.
-
-Run `/wayfind` to tag any components that lack identity classes.
-```
+**If the destination file already exists** (e.g. user already has a `CLAUDE.md`):
+- Do not overwrite. Append the rendered template content under a clearly delimited section, prefixed with `<!-- Begin: Semantic Wayfinder rules -->` and closed with `<!-- End: Semantic Wayfinder rules -->`.
+- If a Wayfinder block already exists between those delimiters, replace it. Don't accumulate stale blocks across runs.
 
 ### Step 7 — Tag the existing codebase
 

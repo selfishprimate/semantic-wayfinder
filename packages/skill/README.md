@@ -33,11 +33,15 @@ That's it. The wizard takes about a minute.
 
 ```
 packages/skill/
-└── .claude/skills/semantic-wayfinder/
-    └── SKILL.md       ← the entire skill, one file
+├── .claude/skills/semantic-wayfinder/
+│   └── SKILL.md       ← the skill instructions Claude Code reads
+└── templates/
+    ├── CLAUDE.md.template
+    ├── GEMINI.md.template
+    └── AGENTS.md.template
 ```
 
-That's the whole package. Nothing to build, nothing to install, no dependencies.
+`SKILL.md` is the brain — the orchestration logic Claude Code follows when the user runs `/wayfind`. The `templates/` folder holds the agent instruction files that the skill writes into user projects during bootstrap, one per supported editor. See [`templates/README.md`](./templates/README.md) for placeholder details.
 
 ## Editing the skill
 
