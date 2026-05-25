@@ -95,7 +95,7 @@ You pick three things during bootstrap, and Wayfinder stays consistent forever a
 | Choice | Options | Example |
 |---|---|---|
 | **Casing** | `camelCase` or `kebab-case` | `aboutHero` vs `about-hero` |
-| **Prefix** | none (default) / `wf` / custom | `aboutHero` vs `wf-aboutHero` vs `myco-aboutHero` |
+| **Prefix** | none (default) / `wf` / custom | `aboutHero` vs `wfAboutHero` (camel) or `wf-about-hero` (kebab) — prefix style follows casing, never mixes |
 | **Scope** | page-level sections only (default) / all meaningful components | `<section>` only vs sections + cards + banners |
 
 The config lives in `.wayfinder.json` at your project root. Commit it — your collaborators should inherit the same conventions. See [`docs/conventions.md`](./docs/conventions.md) for the full naming pattern reference.

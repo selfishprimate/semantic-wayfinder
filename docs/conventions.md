@@ -21,13 +21,13 @@ camelCase is friendlier in JSX (`className="aboutHero ..."`); kebab-case is frie
 
 A short string prepended to every Wayfinder-generated class. Useful for avoiding collisions with existing class names and for making Wayfinder's output easy to spot in your codebase.
 
-| Choice | Example |
-|---|---|
-| **None** (default) | `aboutHero` |
-| **`wf`** | `wf-aboutHero` (kebab) or `wfAboutHero` (camel) |
-| **Custom** (e.g. `myco`) | `myco-aboutHero` |
+| Choice | camelCase | kebab-case |
+|---|---|---|
+| **None** (default) | `aboutHero` | `about-hero` |
+| **`wf`** | `wfAboutHero` | `wf-about-hero` |
+| **Custom** (e.g. `myco`) | `mycoAboutHero` | `myco-about-hero` |
 
-If you choose a prefix, Wayfinder uses the same separator style as your casing — `-` for kebab, capital letter for camel.
+The prefix style always follows the casing — capital letter as the separator in camelCase, hyphen in kebab-case. The two styles **never mix** in a single class name. There is no `wf-aboutHero` form.
 
 ### 3. Scope
 

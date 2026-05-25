@@ -63,7 +63,7 @@ Ask three questions in sequence. Show a live preview after each answer so the us
 
 **Q2 — Prefix:**
 - No prefix (default)
-- Yes, use `wf` (e.g. `wf-aboutHero` or `wfAboutHero` depending on casing)
+- Yes, use `wf` (e.g. `wfAboutHero` with camelCase or `wf-about-hero` with kebab-case — the prefix style follows the casing, never mixes the two)
 - Yes, custom — let the user type their own (e.g. `myco`)
 
 **Q3 — Scope:**
@@ -115,7 +115,7 @@ For each editor the user selected, write a file in the project root containing t
 | `{{SCOPE}}` | `config.scope` | `sections` or `all` |
 | `{{SCOPE_DESCRIPTION}}` | Mapped from scope | for `sections`: "tag `<section>`, `<header>`, `<aside>`, `<nav>`, `<footer>`, `<main>`, and top-level layout `<div>`s"; for `all`: "all of the above plus reusable cards, banners, and groups inside identifiable contexts" |
 | `{{PREFIX_EXAMPLE}}` | Prefix formatted for the casing | `wf-` (kebab + wf), `wf` (camel + wf), empty string (no prefix) |
-| `{{EXAMPLE_HERO}}` | Live example for an About page hero | `aboutHero`, `wf-aboutHero`, or `wfAboutHero` |
+| `{{EXAMPLE_HERO}}` | Live example for an About page hero | `aboutHero` (camel, no prefix), `wfAboutHero` (camel + `wf`), or `wf-about-hero` (kebab + `wf`) — never mix the two casings |
 | `{{EXAMPLE_TESTIMONIALS}}` | Live example for About testimonials | `aboutTestimonials`, `wf-about-testimonials`, etc. |
 | `{{EXAMPLE_SIDEBAR}}` | Live example for a dashboard sidebar | `dashboardSidebar`, etc. |
 | `{{EXAMPLE_FAQ}}` | Live example for a pricing FAQ | `pricingFAQ`, etc. |
