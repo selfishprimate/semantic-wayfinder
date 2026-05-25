@@ -28,16 +28,25 @@ The Agent Skills standard lets the same `SKILL.md` work across Claude Code, Code
 
 **`.claude/skills/wayfinder/SKILL.md` is the source of truth.** Always edit there.
 
-After editing, run:
+### One-time setup: enable the pre-commit hook
+
+After cloning, run this once:
 
 ```bash
-./scripts/sync-skills.sh
+git config core.hooksPath scripts/hooks
 ```
 
-This copies the source to `.agents/` and `.gemini/`. In CI, the same script run with `--check` will fail the build if the copies drift.
+This points git at the project's committed hook (`scripts/hooks/pre-commit`) instead of the default `.git/hooks/` folder. From then on, every commit that includes a change to `.claude/skills/wayfinder/SKILL.md` will automatically run `sync-skills.sh`, propagate the change to `.agents/` and `.gemini/`, and stage the synced copies in the same commit. The three files can't drift in a commit, so you can't accidentally push an inconsistent set.
+
+The setting is per-clone — every contributor runs it once after `git clone`.
+
+### Manual sync (if you skip the hook)
+
+You can still run the sync script directly:
 
 ```bash
-./scripts/sync-skills.sh --check
+./scripts/sync-skills.sh         # propagate
+./scripts/sync-skills.sh --check # verify all three copies match (exits non-zero on drift)
 ```
 
 ## What's welcome
@@ -60,7 +69,7 @@ This copies the source to `.agents/` and `.gemini/`. In CI, the same script run 
 1. Open an issue describing the problem and your proposed approach
 2. Wait for a thumbs-up before writing code
 3. Keep PRs small and focused — one concern per PR
-4. Edit `.claude/skills/wayfinder/SKILL.md` (the source of truth), then run `./scripts/sync-skills.sh`
+4. Edit `.claude/skills/wayfinder/SKILL.md` (the source of truth). If you enabled the pre-commit hook, the sync runs automatically when you commit. Otherwise, run `./scripts/sync-skills.sh` yourself.
 5. Update `README.md` and `docs/conventions.md` if behavior changes
 6. Note breaking changes in the PR description
 
