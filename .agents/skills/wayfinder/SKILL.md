@@ -117,19 +117,28 @@ The manifest is the only safe way to distinguish Wayfinder's additions from sema
 
 ### Step 6 — Write instruction files
 
-For each editor the user selected, write a file in the project root containing the Wayfinder rules. The file content is given verbatim below — substitute the values from `.wayfinder.json` into the placeholders.
+For each editor the user selected during Step 2, write the **shared instruction template** below to the editor's destination file in the project root:
 
-**Placeholder substitution.** Resolve each placeholder once and reuse the same value in every file. From `.wayfinder.json`:
+| Editor | Destination file | `{{EDITOR_NAME}}` value |
+|---|---|---|
+| Claude Code | `CLAUDE.md` | `Claude Code` |
+| Gemini CLI | `GEMINI.md` | `Gemini CLI` |
+| Codex CLI (and other Agent-Skills-compatible agents) | `AGENTS.md` | `Codex CLI` |
+
+The body of the template is identical regardless of editor — only the `{{EDITOR_NAME}}` placeholder in the heading differs. This is intentional: keeping one source of truth for the rules means every editor sees the same instructions and no version drifts.
+
+**Placeholder substitution.** Resolve each placeholder once per project and reuse the same value across every file. From `.wayfinder.json`:
 
 | Placeholder | Source | Example |
 |---|---|---|
+| `{{EDITOR_NAME}}` | Per-file, from the destination map above | `Claude Code`, `Gemini CLI`, `Codex CLI` |
 | `{{CASING}}` | `config.casing` | `camelCase` |
 | `{{PREFIX}}` | `config.prefix` or "none" | `wf-`, `myco-`, or `none` |
 | `{{SCOPE}}` | `config.scope` | `sections` or `all` |
 | `{{SCOPE_DESCRIPTION}}` | Mapped from scope | for `sections`: "tag `<section>`, `<header>`, `<aside>`, `<nav>`, `<footer>`, `<main>`, and top-level layout `<div>`s"; for `all`: "all of the above plus reusable cards, banners, and groups inside identifiable contexts" |
 | `{{PREFIX_EXAMPLE}}` | Prefix formatted for the casing | `wf-` (kebab + wf), `wf` (camel + wf), empty string (no prefix) |
 | `{{EXAMPLE_HERO}}` | Live example for an About page hero | `aboutHero` (camel, no prefix), `wfAboutHero` (camel + `wf`), or `wf-about-hero` (kebab + `wf`) — never mix the two casings |
-| `{{EXAMPLE_TESTIMONIALS}}` | Live example for About testimonials | `aboutTestimonials`, `wf-about-testimonials`, etc. |
+| `{{EXAMPLE_CONTACT}}` | Live example for an About contact section | `aboutContact`, `wf-about-contact`, etc. |
 | `{{EXAMPLE_SIDEBAR}}` | Live example for a dashboard sidebar | `dashboardSidebar`, etc. |
 | `{{EXAMPLE_FAQ}}` | Live example for a pricing FAQ | `pricingFAQ`, etc. |
 
@@ -139,26 +148,28 @@ For each editor the user selected, write a file in the project root containing t
 
 ---
 
-#### Claude Code → write to `CLAUDE.md`
+#### Shared instruction template
 
 ```markdown
-# Project rules for Claude Code
+# Project rules for {{EDITOR_NAME}}
 
-This file gives Claude project-specific context. Anything below applies to every conversation in this codebase unless the user overrides it.
+This file gives {{EDITOR_NAME}} project-specific context. Rules below apply to all code generation and modification in this repository unless the user overrides them.
 
 ---
 
 ## Semantic Wayfinding
 
-This project uses **Semantic Wayfinder** to give every component an identity class that lives alongside its utility classes. The point: when the user asks you to edit "the testimonials section on the about page," you should be able to find it with one `grep` instead of reading through every file to figure out which `<section>` they meant.
+This project uses **Semantic Wayfinder** to give every component an identity class that lives alongside its utility classes. The point: when the user asks you to edit a specific section (e.g. "the contact section on the about page"), you can find it with one `grep` instead of reading through every file trying to figure out which `<section>` they meant.
 
-### The naming convention for this project
+### Project configuration
 
-- **Casing**: `{{CASING}}`
-- **Prefix**: `{{PREFIX}}`
-- **Scope**: `{{SCOPE}}`
+| Setting | Value |
+|---|---|
+| Casing | `{{CASING}}` |
+| Prefix | `{{PREFIX}}` |
+| Scope | `{{SCOPE}}` |
 
-Configuration is locked in `.wayfinder.json` at the project root. Always read from there if you need to confirm — never improvise.
+The canonical configuration lives in `.wayfinder.json` at the project root. Read from it if you need to confirm — never improvise.
 
 ### Naming pattern
 
@@ -166,29 +177,32 @@ Configuration is locked in `.wayfinder.json` at the project root. Always read fr
 {{PREFIX_EXAMPLE}}<pageContext><componentRole>
 ```
 
-- **pageContext** is derived from the file path. `app/about/page.tsx` → `about`. `app/dashboard/settings/page.tsx` → `dashboardSettings`.
-- **componentRole** is derived from what the component does: `hero`, `testimonials`, `cta`, `sidebar`, `faq`, `pricing`, `features`, `newsletter`, `footer`, etc.
+- **pageContext** is derived from the file path. `app/about/page.tsx` → `about`. `app/dashboard/settings/page.tsx` → `dashboardSettings`. For shared components in `components/`, the context comes from the filename (`MarketingHeader.tsx` → `marketing`) or defaults to `global` for bare-role filenames (`Header.tsx` → `globalHeader`).
+- **componentRole** is derived from what the component does: `hero`, `contact`, `testimonials`, `cta`, `sidebar`, `faq`, `pricing`, `features`, `newsletter`, `footer`, `header`, etc.
 
 ### Examples for this project
 
-- About page hero → `{{EXAMPLE_HERO}}`
-- About page testimonials → `{{EXAMPLE_TESTIMONIALS}}`
-- Dashboard sidebar → `{{EXAMPLE_SIDEBAR}}`
-- Pricing FAQ → `{{EXAMPLE_FAQ}}`
+| Component | Resulting class |
+|---|---|
+| About page hero | `{{EXAMPLE_HERO}}` |
+| About page contact section | `{{EXAMPLE_CONTACT}}` |
+| Dashboard sidebar | `{{EXAMPLE_SIDEBAR}}` |
+| Pricing FAQ | `{{EXAMPLE_FAQ}}` |
 
 ### Rules when creating or modifying components
 
-1. **Always add a semantic identity class first** in the `className` list when you create a new component that matches the scope ({{SCOPE_DESCRIPTION}}).
-2. **Never remove utility classes** — Semantic Wayfinder is additive. The identity class lives in front of utilities, not in place of them.
-3. **Never overwrite an existing semantic class** that already matches this project's convention.
-4. **Don't tag layout primitives.** A `<div className="flex">` with one child is not a semantic component; leave it alone.
-5. **Don't tag generated or test files** (`node_modules`, `.next`, `dist`, `*.test.*`, `*.spec.*`).
-6. **Shared / reusable components need a scope, never a bare role.** When creating something in `components/`, `src/components/`, or `app/_components/`, the identity class must combine a scope and a role — never just `header`, `footer`, `sidebar`, `nav` on their own.
-   - `components/Header.tsx` → `globalHeader` (not `header`, not `Header`, not `MarketingHeader` unless the file is actually `MarketingHeader.tsx`).
-   - `components/MarketingHeader.tsx` → `marketingHeader` (the filename already carries the scope; convert PascalCase to the project casing).
-   - `components/admin/AdminSidebar.tsx` → `adminSidebar`.
-   - Use `global` as the default scope for site-wide components; use `main` only if the project has multiple distinct top-level surfaces and `global` would feel too broad. Stay consistent within a project.
-7. **Never echo a filename's PascalCase as the identity class.** The casing always follows `.wayfinder.json` (camelCase or kebab-case). `MarketingHeader.tsx` becomes `marketingHeader`, never `MarketingHeader`.
+1. **Place the identity class first.** When creating or modifying a component matching the project scope ({{SCOPE_DESCRIPTION}}), add the semantic identity class as the first entry in the `className` (JSX) or `class` (HTML / Vue / Svelte) attribute, before any utility classes.
+2. **Additive only.** Never remove, replace, or reorder existing utility classes. The identity class lives in front of utilities, not in place of them.
+3. **Idempotent.** Never overwrite an existing semantic class that already matches the project's convention.
+4. **Don't tag layout primitives.** A `<div className="flex">` with one child is not a semantic component — leave it alone.
+5. **Don't tag generated or test files.** Skip `node_modules`, `.next`, `dist`, `build`, `*.test.*`, `*.spec.*`, and gitignored paths.
+6. **Shared components require a scope, never a bare role.** For files under `components/`, `src/components/`, `app/_components/`, etc., the identity class must combine a scope word with the role:
+   - `components/Header.tsx` → `globalHeader`
+   - `components/MarketingHeader.tsx` → `marketingHeader`
+   - `components/admin/AdminSidebar.tsx` → `adminSidebar`
+
+   Bare role names (`header`, `footer`, `sidebar`, `nav`) are forbidden — they collide across instances and defeat `grep`-based targeting. Use `global` as the default scope; use `main` only when the project has multiple distinct top-level surfaces, and stay consistent within a project.
+7. **Casing follows `.wayfinder.json`, not the filename.** A PascalCase filename like `MarketingHeader.tsx` becomes `marketingHeader` in camelCase or `marketing-header` in kebab-case — never `MarketingHeader`.
 
 ### When the user asks you to edit a specific component
 
@@ -201,139 +215,6 @@ They should run `/wayfinder` (the Semantic Wayfinder skill). Don't try to retroa
 ### When the user wants to remove Wayfinder
 
 They should run `/wayfinder --remove`. The skill reads its own manifest in `.wayfinder.json` and strips only the classes it originally added — leaving utility classes and any semantic classes the user wrote by hand untouched. Don't attempt to grep-and-strip classes yourself; it would risk deleting user-authored work.
-```
-
----
-
-#### Gemini CLI → write to `GEMINI.md`
-
-```markdown
-# Project Instructions for Gemini
-
-This file provides Gemini with project-specific guidance. These rules apply to all code generation and modification within this repository.
-
----
-
-## Semantic Wayfinding Convention
-
-This project uses **Semantic Wayfinder** — every component carries a semantic identity class alongside its utility classes. This makes component targeting predictable and reduces token cost on edit requests.
-
-### Project Configuration
-
-| Setting | Value |
-|---|---|
-| Casing | `{{CASING}}` |
-| Prefix | `{{PREFIX}}` |
-| Scope | `{{SCOPE}}` |
-
-The canonical configuration lives in `.wayfinder.json` at the project root. Reference it for the authoritative values.
-
-### Naming Pattern
-
-Identity classes follow this structure:
-
-```
-{{PREFIX_EXAMPLE}}<pageContext><componentRole>
-```
-
-- `pageContext`: derived from the file path
-  - `app/about/page.tsx` → `about`
-  - `app/dashboard/settings/page.tsx` → `dashboardSettings`
-- `componentRole`: derived from the component's purpose
-  - Common roles: `hero`, `testimonials`, `cta`, `sidebar`, `faq`, `pricing`, `features`, `newsletter`, `footer`, `header`
-
-### Concrete Examples
-
-| Component | Resulting class |
-|---|---|
-| About page hero | `{{EXAMPLE_HERO}}` |
-| About page testimonials | `{{EXAMPLE_TESTIMONIALS}}` |
-| Dashboard sidebar | `{{EXAMPLE_SIDEBAR}}` |
-| Pricing FAQ | `{{EXAMPLE_FAQ}}` |
-
-### Required Behavior
-
-When generating or modifying components in this project:
-
-1. **Add the semantic identity class as the first class** in the `className` (JSX) or `class` (HTML/Vue/Svelte) attribute, before any utility classes.
-2. **Preserve all utility classes.** Semantic Wayfinder is strictly additive; never remove or replace utility classes.
-3. **Never overwrite an existing semantic class** that already matches the project's convention.
-4. **Respect the scope.** This project uses `{{SCOPE}}` scope: {{SCOPE_DESCRIPTION}}.
-5. **Do not tag layout primitives.** Generic wrappers (e.g. `<div class="flex">` containing a single child) should not receive identity classes.
-6. **Exclude generated and test files** from tagging: `node_modules`, `.next`, `dist`, `build`, `*.test.*`, `*.spec.*`.
-7. **Shared components require a scope, never a bare role.** For files under `components/`, `src/components/`, `app/_components/`, etc., the identity class must combine a scope word with the role. `components/Header.tsx` → `globalHeader`. `components/MarketingHeader.tsx` → `marketingHeader`. `components/admin/AdminSidebar.tsx` → `adminSidebar`. Never produce `header`, `footer`, `sidebar`, or `nav` on their own — they collide and break the grep-ability guarantee. Use `global` as the default scope; use `main` only when the project has multiple top-level surfaces.
-8. **Casing follows `.wayfinder.json`, not the filename.** A PascalCase filename like `MarketingHeader.tsx` becomes `marketingHeader` in camelCase or `marketing-header` in kebab-case — never `MarketingHeader`.
-
-### Component Targeting
-
-When the user requests an edit to a named component, the semantic class is the most efficient path to locate it. Use `grep` or your equivalent search tool against the identity class for direct targeting.
-
-### Bulk Tagging
-
-The user can run the Semantic Wayfinder tooling to retroactively tag the codebase. Do not attempt full-codebase tagging during normal conversations; maintain compliance for newly generated code only.
-
-### Removing Wayfinder
-
-If the user wants to remove Wayfinder from this project, direct them to run `/wayfinder --remove`. That command consults the manifest in `.wayfinder.json` and strips only Wayfinder-added classes — never utility classes or user-authored semantic classes. Do not attempt manual cleanup via grep; it would risk deleting hand-written work.
-```
-
----
-
-#### Codex CLI / generic agents → write to `AGENTS.md`
-
-```markdown
-# AGENTS.md
-
-Agent instructions for this repository. Read before generating or modifying code.
-
----
-
-## Semantic Wayfinding
-
-This project applies **Semantic Wayfinder**: every in-scope component receives a semantic identity class in addition to its utility classes. The identity class makes components grep-targetable in one shot.
-
-### Convention (locked in `.wayfinder.json`)
-
-- Casing: `{{CASING}}`
-- Prefix: `{{PREFIX}}`
-- Scope: `{{SCOPE}}`
-
-### Pattern
-
-```
-{{PREFIX_EXAMPLE}}<pageContext><componentRole>
-```
-
-`pageContext` comes from the file path. `componentRole` comes from the component's structure and content (hero, testimonials, cta, sidebar, faq, pricing, features, newsletter, footer, header, etc.).
-
-### Examples
-
-- `{{EXAMPLE_HERO}}` — About page hero
-- `{{EXAMPLE_TESTIMONIALS}}` — About page testimonials
-- `{{EXAMPLE_SIDEBAR}}` — Dashboard sidebar
-- `{{EXAMPLE_FAQ}}` — Pricing FAQ
-
-### Rules
-
-1. **Place the identity class first** in the class list. Utilities follow.
-2. **Additive only.** Do not remove, replace, or reorder existing utility classes.
-3. **Idempotent.** If a matching identity class already exists, leave it.
-4. **Scope is `{{SCOPE}}`**: {{SCOPE_DESCRIPTION}}.
-5. **Do not tag**: pure layout primitives, generated files (`node_modules`, `.next`, `dist`, `build`), test files (`*.test.*`, `*.spec.*`), gitignored paths.
-6. **Shared components require a scope.** For files under `components/`, `src/components/`, or `app/_components/`, every identity class must combine a scope word with the role. Examples: `components/Header.tsx` → `globalHeader`; `components/MarketingHeader.tsx` → `marketingHeader`; `components/admin/AdminSidebar.tsx` → `adminSidebar`. Bare role names (`header`, `footer`, `sidebar`, `nav`) are forbidden — they defeat `grep`-based targeting. `global` is the default scope; `main` is an alternative when the project has multiple top-level surfaces.
-7. **Casing follows `.wayfinder.json`.** `MarketingHeader.tsx` becomes `marketingHeader` or `marketing-header`, never `MarketingHeader`.
-
-### Targeting an existing component
-
-Grep the identity class. Single hit, single edit. Avoid scanning full files when the convention provides a direct lookup.
-
-### Bulk operations
-
-Full-codebase tagging is handled by the Semantic Wayfinder tooling (`/wayfinder` skill or `npx semantic-wayfinder` CLI when available). Do not perform bulk retroactive tagging in normal task execution; ensure newly generated code is compliant.
-
-### Removal
-
-If the user wants to remove Wayfinder from this project, the correct command is `/wayfinder --remove`. It reads the manifest in `.wayfinder.json` and strips only the identity classes Wayfinder added — utility classes and any user-authored semantic classes are preserved. Do not attempt manual class removal via grep or pattern matching.
 ```
 
 ### Step 7 — Tag the existing codebase
