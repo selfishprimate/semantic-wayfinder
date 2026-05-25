@@ -95,12 +95,46 @@ A non-exhaustive list of roles Wayfinder produces. These are the most common —
 
 ## Shared / reusable components
 
-Components that don't belong to a single page (e.g. `components/sections/Hero.tsx` reused across `about`, `pricing`, `landing`) are tagged differently:
+Components that live under `components/`, `src/components/`, `app/_components/`, etc. — i.e. not bound to a single page — still follow the `<pageContext><componentRole>` pattern. `pageContext` just comes from a different source.
 
-- **Inside the component file itself**: no `pageContext` prefix — just `hero`, `testimonials`, etc.
-- **At the call site**: the page-level wrapper element gets the contextualized name, e.g. `<div className="aboutHeroWrapper"><Hero {...} /></div>`
+### The rule: scope from filename or fall back to `global`
 
-This avoids reusable components getting locked to one page's naming.
+1. **Filename already carries a scope word.** PascalCase filenames split on word boundaries. The trailing word is the role; the leading word(s) form the context.
+
+   | File | Context | Role | Identity class |
+   |---|---|---|---|
+   | `components/MarketingHeader.tsx` | `marketing` | `header` | `marketingHeader` |
+   | `components/DashboardSidebar.tsx` | `dashboard` | `sidebar` | `dashboardSidebar` |
+   | `components/BlogPostFooter.tsx` | `blogPost` | `footer` | `blogPostFooter` |
+   | `components/admin/AdminSidebar.tsx` | `admin` | `sidebar` | `adminSidebar` |
+
+2. **Filename is just a bare role.** Components named `Header.tsx`, `Footer.tsx`, `Sidebar.tsx`, `Nav.tsx` are global. Prefix with `global`:
+
+   | File | Identity class |
+   |---|---|
+   | `components/Header.tsx` | `globalHeader` |
+   | `components/Footer.tsx` | `globalFooter` |
+   | `components/Nav.tsx` | `globalNav` |
+
+   Use `main` instead of `global` if the project has multiple distinct top-level surfaces (e.g. a marketing site **and** a dashboard share the same root layout). Stay consistent — don't mix `global` and `main` for the same kind of component within one project.
+
+### What is forbidden
+
+- **Bare role names.** Never produce `header`, `footer`, `sidebar`, or `nav` on their own. They collide with multiple instances and defeat the entire point of wayfinding.
+- **PascalCase echoes.** Never use `Header`, `Footer`, `MarketingHeader` literally. The casing must follow `.wayfinder.json` — `MarketingHeader.tsx` becomes `marketingHeader` (camelCase) or `marketing-header` (kebab-case).
+
+### Call-site wrappers
+
+When a generic component (e.g. `<Hero />`) is reused across pages, the *call site* can add a page-level wrapper class so the specific instance is still greppable from the page:
+
+```jsx
+// app/about/page.tsx
+<div className="aboutHeroWrapper">
+  <Hero title="…" />
+</div>
+```
+
+This keeps the reusable component free of page-specific naming while still giving page-level edits a single grep target.
 
 ## Collisions and edge cases
 

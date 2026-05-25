@@ -72,12 +72,13 @@ If you don't use any of those three editors yet, the CLI is on the way — see [
 
 ## How it works
 
-`/wayfinder` runs in one of two modes, auto-detected:
+`/wayfinder` runs in one of three modes, auto-detected (except `--remove`, which is explicit):
 
 | Run | What happens |
 |---|---|
 | **First run** (no `.wayfinder.json` in project) | Bootstrap: asks about casing / prefix / scope, writes rule files for the agents you use (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`), tags your entire codebase, commits. |
 | **Every later run** | Incremental: reads your existing config, finds new or changed files since last run, tags only those. No questions, no surprises. |
+| **`/wayfinder --remove`** | Strips every identity class Wayfinder added (per its manifest in `.wayfinder.json`), optionally deletes the config and instruction blocks. Utility classes and any semantic classes you wrote by hand are left untouched. |
 
 Pass `--reset` if you ever want to start the wizard over.
 
