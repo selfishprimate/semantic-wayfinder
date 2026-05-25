@@ -8,7 +8,7 @@ Semantic Wayfinder adds a single semantic identity class to each component (`abo
 
 ## Why this exists
 
-Read the full argument here: **[Semantic Wayfinding: Why Vibe Coding Needs More Than Utility Classes](#)** *(link your Medium article when published)*
+Read the full argument here: **[Semantic Wayfinding: Why Vibe Coding Needs More Than Utility Classes](#)** *(link your article when published)*
 
 The short version, in numbers from the article:
 
@@ -16,30 +16,46 @@ The short version, in numbers from the article:
 - The same edit, in a Wayfinder-tagged codebase, takes **~190 tokens**. One `grep`, one edit.
 - Roughly **6.9× cheaper, 85% saving** — see the article for the methodology and a transparency note on how the measurements were modeled.
 
-## This repo contains two things
+## What's in this repo
 
-Semantic Wayfinder ships as two surfaces over the same engine. The skill is here today; the CLI is the next thing on the roadmap.
+Semantic Wayfinder ships as an **Agent Skill** for three editors that share the open Agent Skills standard, plus a CLI on the roadmap for everywhere else.
 
-| Package | What it is | Status | Where |
-|---|---|---|---|
-| **[Skill](./packages/skill)** | A Claude Code skill. Drop it into your project, run `/wayfind`, get tagged components. | ✅ v0.1 — available now | [`packages/skill/`](./packages/skill) |
-| **[CLI](./packages/cli)** | An `npx semantic-wayfinder` command for Gemini CLI, Codex CLI, headless use, and CI. | 🚧 Coming in v0.3 | [`packages/cli/`](./packages/cli) |
+| Path | Editor | Status |
+|---|---|---|
+| `.claude/skills/semantic-wayfinder/` | Claude Code | ✅ v0.1 |
+| `.agents/skills/semantic-wayfinder/` | Codex CLI, Aider, and other Agent-Skills-compatible agents | ✅ v0.1 |
+| `.gemini/skills/semantic-wayfinder/` | Gemini CLI | ✅ v0.1 |
+| `cli/` | `npx semantic-wayfinder` for any environment | 🚧 v0.3 |
 
-Both packages use the same `.wayfinder.json` config format and produce identical output. Pick whichever interface fits where you work.
+The three `SKILL.md` files are kept in sync by `scripts/sync-skills.sh`. The `.claude/` copy is the source of truth.
 
 ## Quick start
 
-If you're on **Claude Code**, you're ready today:
+If you already use **Claude Code**, **Codex CLI**, or **Gemini CLI**, the corresponding skill folder is the only thing you need. Copy it into your project:
 
 ```bash
-# In your existing project:
-cp -r path/to/semantic-wayfinder/packages/skill/.claude/skills/semantic-wayfinder \
-      .claude/skills/
+# Claude Code
+cp -r path/to/semantic-wayfinder/.claude/skills/semantic-wayfinder \
+      your-project/.claude/skills/
+
+# Codex CLI / generic
+cp -r path/to/semantic-wayfinder/.agents/skills/semantic-wayfinder \
+      your-project/.agents/skills/
+
+# Gemini CLI
+cp -r path/to/semantic-wayfinder/.gemini/skills/semantic-wayfinder \
+      your-project/.gemini/skills/
 ```
 
-Then open the project in Claude Code and run `/wayfind`. The wizard takes about a minute.
+Then open your project in your editor and run:
 
-If you're on **Gemini CLI**, **Codex CLI**, or any other agent — the CLI is on the roadmap. In the meantime, you can copy the contents of [`SKILL.md`](./packages/skill/.claude/skills/semantic-wayfinder/SKILL.md) into a `GEMINI.md` or `AGENTS.md` in your project root; your agent will follow the rules, just without the bootstrap wizard.
+```
+/wayfind
+```
+
+That's it. The wizard takes about a minute on first run; subsequent runs are incremental and silent.
+
+If you don't use any of those three editors yet, the CLI is on the way — see [`cli/`](./cli) for the planned interface and roadmap.
 
 ## How it works
 
@@ -47,10 +63,17 @@ If you're on **Gemini CLI**, **Codex CLI**, or any other agent — the CLI is on
 
 | Run | What happens |
 |---|---|
-| **First run** (no `.wayfinder.json` in project) | Bootstrap: detects which agents you use, asks about casing / prefix / scope, writes instruction files, tags your entire codebase, commits. |
+| **First run** (no `.wayfinder.json` in project) | Bootstrap: asks about casing / prefix / scope, writes rule files for the agents you use (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`), tags your entire codebase, commits. |
 | **Every later run** | Incremental: reads your existing config, finds new or changed files since last run, tags only those. No questions, no surprises. |
 
 Pass `--reset` if you ever want to start the wizard over.
+
+> **Note — two different file types, easy to confuse:**
+>
+> - `SKILL.md` files in `.claude/`, `.agents/`, `.gemini/` are the **Wayfinder tool itself** — the instructions the agent reads when you run `/wayfind`.
+> - `CLAUDE.md`, `GEMINI.md`, `AGENTS.md` in your project root are **rule files Wayfinder writes for you** during bootstrap, telling future agent work in this project to keep using the convention.
+>
+> The skill is the tool. The rule files are the policy.
 
 ## Naming conventions
 
@@ -62,7 +85,7 @@ You pick three things during bootstrap, and Wayfinder stays consistent forever a
 | **Prefix** | none (default) / `wf` / custom | `aboutHero` vs `wf-aboutHero` vs `myco-aboutHero` |
 | **Scope** | page-level sections only (default) / all meaningful components | `<section>` only vs sections + cards + banners |
 
-The config lives in `.wayfinder.json` at your project root. Commit it — your collaborators should inherit the same conventions.
+The config lives in `.wayfinder.json` at your project root. Commit it — your collaborators should inherit the same conventions. See [`docs/conventions.md`](./docs/conventions.md) for the full naming pattern reference.
 
 ## Examples
 
@@ -84,11 +107,28 @@ Same styling, same behavior. Now `grep aboutTestimonials` gives one hit, an agen
 
 ## Roadmap
 
-- **v0.1** *(current)* — Claude Code skill, JSX/HTML support, bootstrap + incremental
+- **v0.1** *(current)* — Skill for Claude Code, Codex CLI, and Gemini CLI; JSX/HTML support; bootstrap + incremental
 - **v0.2** — Vue and Svelte template parsers, better confidence scoring
-- **v0.3** — `npx semantic-wayfinder` CLI for Gemini CLI, Codex CLI, and headless use (BYOK with Anthropic / OpenAI keys)
+- **v0.3** — `npx semantic-wayfinder` CLI for headless use, CI, and editors without Agent Skills support (BYOK)
 - **v0.4** — `.wayfinder-patterns.json` for cross-run pattern learning
 - *(later)* — Optional render + vision pass for hard-to-classify components
+
+## Repo layout
+
+```
+semantic-wayfinder/
+├── .claude/skills/semantic-wayfinder/SKILL.md    # Claude Code skill (source of truth)
+├── .agents/skills/semantic-wayfinder/SKILL.md    # Codex CLI / generic skill
+├── .gemini/skills/semantic-wayfinder/SKILL.md    # Gemini CLI skill
+├── cli/                                          # v0.3 placeholder
+├── docs/conventions.md                           # naming rules reference
+├── examples/                                     # before/after + sample config
+├── scripts/sync-skills.sh                        # keeps the three SKILL.md copies in sync
+├── README.md
+├── CONTRIBUTING.md
+├── LICENSE
+└── .gitignore
+```
 
 ## Contributing
 

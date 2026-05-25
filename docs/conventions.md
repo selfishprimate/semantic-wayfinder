@@ -1,6 +1,6 @@
 # Naming Conventions Reference
 
-This document is the **single source of truth** for how Semantic Wayfinder names components. Both the [skill](../packages/skill) and the [CLI](../packages/cli) read from this same set of rules, so output stays identical no matter which surface you use.
+This document is the **single source of truth** for how Semantic Wayfinder names components. The skill (in `.claude/`, `.agents/`, and `.gemini/`) and the upcoming [CLI](../cli) read from this same set of rules, so output stays identical no matter which surface you use.
 
 ## The three choices
 

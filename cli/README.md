@@ -1,6 +1,6 @@
 # Semantic Wayfinder — CLI
 
-> 🚧 **Coming in v0.3** — this package is a placeholder. The Claude Code [skill](../skill) is available now and the CLI will share its engine.
+> 🚧 **Coming in v0.3** — this package is a placeholder. The Agent Skill is available now in [`.claude/`](../.claude/skills/semantic-wayfinder), [`.agents/`](../.agents/skills/semantic-wayfinder), and [`.gemini/`](../.gemini/skills/semantic-wayfinder), and the CLI will share its engine.
 
 ## What this will be
 
@@ -54,4 +54,4 @@ A few things explicitly **not** on the v0.3 menu:
 - [ ] `--reset` mode
 - [ ] First publish to npm
 
-Want to help build this? See [`CONTRIBUTING.md`](../../CONTRIBUTING.md) and open an issue first so we can align on direction.
+Want to help build this? See [`CONTRIBUTING.md`](../CONTRIBUTING.md) and open an issue first so we can align on direction.
