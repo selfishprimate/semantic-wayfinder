@@ -5,9 +5,9 @@
 # Keeps the three SKILL.md copies in sync. Semantic Wayfinder ships the same
 # skill instructions for three editors that share the Agent Skills standard:
 #
-#   .claude/skills/semantic-wayfinder/SKILL.md   (Claude Code)
-#   .agents/skills/semantic-wayfinder/SKILL.md   (Codex CLI, generic agents)
-#   .gemini/skills/semantic-wayfinder/SKILL.md   (Gemini CLI)
+#   .claude/skills/wayfinder/SKILL.md   (Claude Code)
+#   .agents/skills/wayfinder/SKILL.md   (Codex CLI, generic agents)
+#   .gemini/skills/wayfinder/SKILL.md   (Gemini CLI)
 #
 # We treat .claude/ as the source of truth and copy from there to the other
 # two. If you need editor-specific divergence later, this script is the place
@@ -20,10 +20,10 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SOURCE="$REPO_ROOT/.claude/skills/semantic-wayfinder/SKILL.md"
+SOURCE="$REPO_ROOT/.claude/skills/wayfinder/SKILL.md"
 TARGETS=(
-  "$REPO_ROOT/.agents/skills/semantic-wayfinder/SKILL.md"
-  "$REPO_ROOT/.gemini/skills/semantic-wayfinder/SKILL.md"
+  "$REPO_ROOT/.agents/skills/wayfinder/SKILL.md"
+  "$REPO_ROOT/.gemini/skills/wayfinder/SKILL.md"
 )
 
 if [[ ! -f "$SOURCE" ]]; then

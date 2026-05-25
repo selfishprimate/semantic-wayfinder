@@ -1,5 +1,5 @@
 ---
-name: semantic-wayfinder
+name: wayfinder
 description: Tags components in your codebase with semantic identity classes so AI agents can target them precisely instead of guessing. Reduces token burn and back-and-forth on edit requests. Runs on first invocation to set up the project; subsequent invocations only touch new or changed files.
 version: 0.1.0
 license: MIT

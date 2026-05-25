@@ -22,9 +22,9 @@ Semantic Wayfinder ships as an **Agent Skill** for three editors that share the 
 
 | Path | Editor | Status |
 |---|---|---|
-| `.claude/skills/semantic-wayfinder/` | Claude Code | ✅ v0.1 |
-| `.agents/skills/semantic-wayfinder/` | Codex CLI, Aider, and other Agent-Skills-compatible agents | ✅ v0.1 |
-| `.gemini/skills/semantic-wayfinder/` | Gemini CLI | ✅ v0.1 |
+| `.claude/skills/wayfinder/` | Claude Code | ✅ v0.1 |
+| `.agents/skills/wayfinder/` | Codex CLI, Aider, and other Agent-Skills-compatible agents | ✅ v0.1 |
+| `.gemini/skills/wayfinder/` | Gemini CLI | ✅ v0.1 |
 | `cli/` | `npx semantic-wayfinder` for any environment | 🚧 v0.3 |
 
 The three `SKILL.md` files are kept in sync by `scripts/sync-skills.sh`. The `.claude/` copy is the source of truth.
@@ -35,15 +35,15 @@ If you already use **Claude Code**, **Codex CLI**, or **Gemini CLI**, the corres
 
 ```bash
 # Claude Code
-cp -r path/to/semantic-wayfinder/.claude/skills/semantic-wayfinder \
+cp -r path/to/semantic-wayfinder/.claude/skills/wayfinder \
       your-project/.claude/skills/
 
 # Codex CLI / generic
-cp -r path/to/semantic-wayfinder/.agents/skills/semantic-wayfinder \
+cp -r path/to/semantic-wayfinder/.agents/skills/wayfinder \
       your-project/.agents/skills/
 
 # Gemini CLI
-cp -r path/to/semantic-wayfinder/.gemini/skills/semantic-wayfinder \
+cp -r path/to/semantic-wayfinder/.gemini/skills/wayfinder \
       your-project/.gemini/skills/
 ```
 
@@ -117,9 +117,9 @@ Same styling, same behavior. Now `grep aboutTestimonials` gives one hit, an agen
 
 ```
 semantic-wayfinder/
-├── .claude/skills/semantic-wayfinder/SKILL.md    # Claude Code skill (source of truth)
-├── .agents/skills/semantic-wayfinder/SKILL.md    # Codex CLI / generic skill
-├── .gemini/skills/semantic-wayfinder/SKILL.md    # Gemini CLI skill
+├── .claude/skills/wayfinder/SKILL.md    # Claude Code skill (source of truth)
+├── .agents/skills/wayfinder/SKILL.md    # Codex CLI / generic skill
+├── .gemini/skills/wayfinder/SKILL.md    # Gemini CLI skill
 ├── cli/                                          # v0.3 placeholder
 ├── docs/conventions.md                           # naming rules reference
 ├── examples/                                     # before/after + sample config

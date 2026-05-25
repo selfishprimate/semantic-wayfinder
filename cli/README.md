@@ -1,6 +1,6 @@
 # Semantic Wayfinder — CLI
 
-> 🚧 **Coming in v0.3** — this package is a placeholder. The Agent Skill is available now in [`.claude/`](../.claude/skills/semantic-wayfinder), [`.agents/`](../.agents/skills/semantic-wayfinder), and [`.gemini/`](../.gemini/skills/semantic-wayfinder), and the CLI will share its engine.
+> 🚧 **Coming in v0.3** — this package is a placeholder. The Agent Skill is available now in [`.claude/`](../.claude/skills/wayfinder), [`.agents/`](../.agents/skills/wayfinder), and [`.gemini/`](../.gemini/skills/wayfinder), and the CLI will share its engine.
 
 ## What this will be
 

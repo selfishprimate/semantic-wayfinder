@@ -6,9 +6,9 @@ Thanks for considering a contribution. This project is small and opinionated —
 
 ```
 semantic-wayfinder/
-├── .claude/skills/semantic-wayfinder/SKILL.md   ← source of truth
-├── .agents/skills/semantic-wayfinder/SKILL.md   ← synced copy (Codex / generic)
-├── .gemini/skills/semantic-wayfinder/SKILL.md   ← synced copy (Gemini CLI)
+├── .claude/skills/wayfinder/SKILL.md   ← source of truth
+├── .agents/skills/wayfinder/SKILL.md   ← synced copy (Codex / generic)
+├── .gemini/skills/wayfinder/SKILL.md   ← synced copy (Gemini CLI)
 ├── cli/                                          ← v0.3 placeholder
 ├── docs/conventions.md                           ← naming rules
 ├── examples/                                     ← before/after demos
@@ -26,7 +26,7 @@ The Agent Skills standard lets the same `SKILL.md` work across Claude Code, Code
 - Future divergence is possible (editor-specific tone or commands)
 - Diffs stay readable
 
-**`.claude/skills/semantic-wayfinder/SKILL.md` is the source of truth.** Always edit there.
+**`.claude/skills/wayfinder/SKILL.md` is the source of truth.** Always edit there.
 
 After editing, run:
 
@@ -60,7 +60,7 @@ This copies the source to `.agents/` and `.gemini/`. In CI, the same script run 
 1. Open an issue describing the problem and your proposed approach
 2. Wait for a thumbs-up before writing code
 3. Keep PRs small and focused — one concern per PR
-4. Edit `.claude/skills/semantic-wayfinder/SKILL.md` (the source of truth), then run `./scripts/sync-skills.sh`
+4. Edit `.claude/skills/wayfinder/SKILL.md` (the source of truth), then run `./scripts/sync-skills.sh`
 5. Update `README.md` and `docs/conventions.md` if behavior changes
 6. Note breaking changes in the PR description
 
