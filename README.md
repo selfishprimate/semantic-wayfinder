@@ -37,16 +37,23 @@ The skill is a single `SKILL.md` file with **zero dependencies** — no runtime,
 
 From your project root, run the one-liner for your editor:
 
+**Claude Code**
+
 ```bash
-# Claude Code
 curl -fsSL https://raw.githubusercontent.com/selfishprimate/semantic-wayfinder/main/.claude/skills/wayfinder/SKILL.md \
   --create-dirs -o .claude/skills/wayfinder/SKILL.md
+```
 
-# Codex CLI (and other Agent-Skills-compatible agents)
+**Codex CLI** (and other Agent-Skills-compatible agents)
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/selfishprimate/semantic-wayfinder/main/.agents/skills/wayfinder/SKILL.md \
   --create-dirs -o .agents/skills/wayfinder/SKILL.md
+```
 
-# Gemini CLI
+**Gemini CLI**
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/selfishprimate/semantic-wayfinder/main/.gemini/skills/wayfinder/SKILL.md \
   --create-dirs -o .gemini/skills/wayfinder/SKILL.md
 ```
