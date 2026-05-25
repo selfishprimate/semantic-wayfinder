@@ -31,20 +31,24 @@ The three `SKILL.md` files are kept in sync by `scripts/sync-skills.sh`. The `.c
 
 ## Quick start
 
-If you already use **Claude Code**, **Codex CLI**, or **Gemini CLI**, the corresponding skill folder is the only thing you need. Copy it into your project:
+The skill is a single `SKILL.md` file with **zero dependencies** — no runtime, no package install, no build step. Drop it into your project, run `/wayfinder`, done.
+
+### Install in your project
+
+From your project root, run the one-liner for your editor:
 
 ```bash
 # Claude Code
-cp -r path/to/semantic-wayfinder/.claude/skills/wayfinder \
-      your-project/.claude/skills/
+curl -fsSL https://raw.githubusercontent.com/selfishprimate/semantic-wayfinder/main/.claude/skills/wayfinder/SKILL.md \
+  --create-dirs -o .claude/skills/wayfinder/SKILL.md
 
-# Codex CLI / generic
-cp -r path/to/semantic-wayfinder/.agents/skills/wayfinder \
-      your-project/.agents/skills/
+# Codex CLI (and other Agent-Skills-compatible agents)
+curl -fsSL https://raw.githubusercontent.com/selfishprimate/semantic-wayfinder/main/.agents/skills/wayfinder/SKILL.md \
+  --create-dirs -o .agents/skills/wayfinder/SKILL.md
 
 # Gemini CLI
-cp -r path/to/semantic-wayfinder/.gemini/skills/wayfinder \
-      your-project/.gemini/skills/
+curl -fsSL https://raw.githubusercontent.com/selfishprimate/semantic-wayfinder/main/.gemini/skills/wayfinder/SKILL.md \
+  --create-dirs -o .gemini/skills/wayfinder/SKILL.md
 ```
 
 Then open your project in your editor and run:
@@ -54,6 +58,8 @@ Then open your project in your editor and run:
 ```
 
 That's it. The wizard takes about a minute on first run; subsequent runs are incremental and silent.
+
+> Prefer to vendor it yourself? Clone this repo and `cp -r .claude/skills/wayfinder your-project/.claude/skills/` (or the equivalent path for your editor). The skill is just markdown — nothing magical about the delivery mechanism.
 
 If you don't use any of those three editors yet, the CLI is on the way — see [`cli/`](./cli) for the planned interface and roadmap.
 
