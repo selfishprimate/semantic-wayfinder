@@ -38,9 +38,10 @@ if [ -z "$HEAD_VERSION" ] || [ "$CURRENT" = "$HEAD_VERSION" ]; then
   MSG_FILE=".git/COMMIT_EDITMSG"
 
   if [ -f "$MSG_FILE" ]; then
-    if grep -qE "(^|\s)(BREAKING:|breaking:|!:)" "$MSG_FILE"; then
+    # NOTE: use [[:space:]] not \s — BSD grep (macOS default) doesn't honor \s.
+    if grep -qE "(^|[[:space:]])(BREAKING:|breaking:|!:)" "$MSG_FILE"; then
       BUMP_TYPE="major"
-    elif grep -qE "(^|\s)(feat:|FEAT:)" "$MSG_FILE"; then
+    elif grep -qE "(^|[[:space:]])(feat:|FEAT:)" "$MSG_FILE"; then
       BUMP_TYPE="minor"
     fi
   fi
