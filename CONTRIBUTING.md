@@ -49,6 +49,43 @@ You can still run the sync script directly:
 ./scripts/sync-skills.sh --check # verify all three copies match (exits non-zero on drift)
 ```
 
+## Versioning and the CHANGELOG
+
+The project uses [SemVer](https://semver.org/spec/v2.0.0.html). The version of record lives in `.claude/skills/wayfinder/SKILL.md`'s frontmatter (`version: X.Y.Z`) — this is the **single source of truth**. The other two SKILL.md copies inherit it via sync.
+
+### Automatic bumping (via the pre-commit hook)
+
+When you commit a change to `.claude/skills/wayfinder/SKILL.md`, the pre-commit hook auto-bumps the version. The bump type is inferred from the commit message:
+
+| Commit message contains | Bump |
+|---|---|
+| `BREAKING:` or `breaking:` or `!:` | major (`0.1.2 → 1.0.0`) |
+| `feat:` or `FEAT:` | minor (`0.1.2 → 0.2.0`) |
+| anything else (including `fix:`, `chore:`, or no marker) | patch (`0.1.2 → 0.1.3`) |
+
+The hook skips bumping if you already bumped the version manually as part of your edit — it diffs the staged frontmatter against `HEAD` and only acts when they match.
+
+### Manual bumping
+
+If you want to bump explicitly before staging:
+
+```bash
+./scripts/bump-version.sh patch     # 0.1.2 → 0.1.3
+./scripts/bump-version.sh minor     # 0.1.2 → 0.2.0
+./scripts/bump-version.sh major     # 0.1.2 → 1.0.0
+./scripts/bump-version.sh --show    # just print the current version
+```
+
+The script modifies `.claude/skills/wayfinder/SKILL.md` in place and prints the new version to stdout. Run sync afterward (or rely on the hook).
+
+### CHANGELOG.md
+
+Every behavioral change to the skill must add an entry to `CHANGELOG.md` under the appropriate version heading, following the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format (Added / Changed / Deprecated / Removed / Fixed / Security / Breaking).
+
+The pre-commit hook prints a **soft warning** when SKILL.md changes without a CHANGELOG update — not blocking, just a nudge. Doc-only commits don't need a changelog entry.
+
+When you commit changes that should go into the next release, add them under an `## [Unreleased]` section. When the release ships, move them under the new version heading.
+
 ## What's welcome
 
 - **Bug reports** with a minimal reproduction (a small snippet of the codebase that gets mis-tagged, the config used, what happened, what you expected)

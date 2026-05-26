@@ -1,0 +1,83 @@
+# Changelog
+
+All notable changes to Semantic Wayfinder are documented here.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+While the project is in `0.x`, breaking grammar changes may land in MINOR bumps. Once `1.0.0` ships, semver discipline tightens.
+
+---
+
+## [0.1.2] — 2026-05-26
+
+Reactive hardening driven by the first real-world Wayfinder run (Plainify project, May 26). Four behavior fixes that surfaced when the spec met an actual codebase: a bare `header` class drowned in `grep` noise, an empty manifest after a partial run, missed auth pages, and a dirty working tree with no commit.
+
+### Added
+- **Reserved-words list.** Hardcoded set of common HTML element names (`header`, `footer`, `nav`, `aside`, `section`, `article`, `form`, `button`, `input`, `label`, `select`, `dialog`, `menu`, `details`, `summary`, `figure`, `table`) and universal UI patterns (`sidebar`, `modal`, `card`, `dropdown`, `tooltip`, `banner`, `alert`, `toast`, `badge`, `chip`, `avatar`, `icon`, `list`, `link`, `divider`). Bare components matching these roles always get a `main` prefix even without a real collision. Prevents ambient `grep` noise that made `Header.tsx → header` unusable in practice.
+- **Phase 1 user-confirmation checkpoint.** Before Phase 2 starts writing anything, the agent must show the full discovery plan (every page, every component, with derived class names and skip reasons) and wait for explicit user approval. Catches missing files and wrong resolutions before they turn into bad tags.
+- **Phase 2 completeness check.** End-of-run comparison of `siteMap` vs `tagged`. Mismatches surface as explicit "incomplete run" warnings in the closing summary, with a per-file pending list.
+- **Partial-completion commit mode.** Bootstrap Step 8 and Incremental Step 6 write a distinct `chore: partial wayfind…` commit when not every file in the siteMap was tagged. `INCOMPLETE` marker visible in `git log`.
+- `wiki/NAMING_GRAMMAR.md` — design memory for the active grammar (added in v0.1.1, predates this hardening pass).
+
+### Changed
+- **Manifest writes are now atomic with source-file writes.** Each tagged file is paired with its `.wayfinder.json` entry in a single transaction, persisted to disk before moving to the next file. Replaces the previous "persist at end of run" rule, which caused empty manifests when runs were interrupted by token limits.
+- **Page discovery is explicitly recursive.** Spec now lists common failure modes (shallow `ls`, stopping early, skipping route-group parens) and requires exhaustive walks at every depth. Worked examples added for route groups (`(marketing)`, `(auth)`), dynamic routes (`[id]`, `[slug]`), parallel routes (`@modal`), and catch-all brackets (`[...params]`).
+- **Component discovery now skips test files, underscore-prefixed helpers, index barrels, and pure-utility files** that don't return JSX. Filename normalization documented: `kebab-case`, `snake_case`, and `PascalCase` all yield the same camelCase token.
+- **Step 8 commit is mandatory.** Any modified source file or created `.wayfinder.json` must end with a commit, even on partial runs. Prevents the "dirty working tree, no clue what happened" failure mode that the first Plainify run produced.
+- Next.js special files (`layout.tsx`, `template.tsx`, `error.tsx`, `loading.tsx`, `not-found.tsx`, `global-error.tsx`, `route.ts`, `middleware.ts`, `_app.tsx`, `_document.tsx`, `_error.tsx`) explicitly listed as out-of-scope. Their file-system convention already serves as wayfinding.
+
+### Fixed
+- Auth pages under `app/` (e.g., `app/login/page.tsx`, `app/signup/page.tsx`, `app/forgot-password/page.tsx`) were silently dropped from the siteMap during the first Plainify run. Fixed by formalizing exhaustive discovery.
+- Bare reserved-word components like `Header.tsx` no longer resolve to ambient class names like `header` — they now correctly become `mainHeader`.
+- Closing summary no longer claims success when work is unfinished. Partial runs are reported explicitly with pending file lists.
+
+---
+
+## [0.1.1] — 2026-05-26
+
+Naming grammar rewrite, replacing the original `pageContext + componentRole` pattern with **component-identity tagging**. Triggered by the realization that reusable components carrying page-prefixed names lie when used on other pages (e.g., `aboutPageContactForm` rendered on the homepage).
+
+### Changed
+- **New grammar.** Pages get `{page}Page` on their root element (e.g., `aboutPage`, `dashboardSettingsPage`, `homePage`). Components get their filename camelCased on their root element (e.g., `contactForm`, `tableOfContents`, `docsSidebar`). Collision detection adds `main` or domain prefixes only when components share a role.
+- **Two-phase engine.** Phase 1 (structural analysis) maps the whole project — pages, components, role collisions — before Phase 2 (tagging) writes anything. Stored in `.wayfinder.json` as `siteMap`.
+- **`.wayfinder.json` schema updated.** Added `siteMap` field. Removed `scope` field (the bootstrap question is gone — Wayfinder always tags page roots and component roots, never anything else).
+- **Bootstrap simplified to two questions** (casing + optional prefix) instead of three. The `scope` question (sections-only vs all) was retired.
+- **Single shared instruction template** in `SKILL.md` Step 6, replacing three near-identical templates that drifted across editors. A `{{EDITOR_NAME}}` placeholder differentiates the rendered files (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`); the body is byte-identical.
+
+### Added
+- `wiki/NAMING_GRAMMAR.md` documenting why the grammar looks the way it does, what was tried and rejected, and what's still open for v0.2+.
+- `--remove` flag with manifest-driven class removal — only strips classes Wayfinder originally added, never user-authored ones that happen to match the convention.
+- Manifest field (`tagged`) in `.wayfinder.json` to track which classes Wayfinder wrote, keyed by file path.
+
+### Removed
+- `aboutHero`, `aboutTestimonials`, `aboutContact` and other page-prefixed component names. Components no longer carry their host page in the class.
+- Inline section tagging inside page files. To make a section greppable, extract it as a component file.
+- The `scope` bootstrap question and its supporting placeholders (`{{SCOPE}}`, `{{SCOPE_DESCRIPTION}}`, `{{EXAMPLE_HERO}}`, `{{EXAMPLE_TESTIMONIALS}}`).
+
+### Breaking
+- Any project tagged under v0.1.0 has class names that no longer match v0.1.1+ output. Re-running `/wayfinder --remove` then `/wayfinder` will transition cleanly. No v0.1.0 users in the wild, so no backwards-compat shim needed.
+
+---
+
+## [0.1.0] — 2026-05-25
+
+Initial release. Skill specification and surrounding documentation; the original `pageContext + componentRole` grammar (later superseded). Never run against a real codebase before v0.1.1 replaced it.
+
+### Added
+- `SKILL.md` for Claude Code, Codex CLI, and Gemini CLI (three byte-identical copies under `.claude/`, `.agents/`, `.gemini/`).
+- `scripts/sync-skills.sh` to keep the three copies in sync, with `--check` mode for verification.
+- `scripts/hooks/pre-commit` for automatic sync on commit (activated via `git config core.hooksPath scripts/hooks`).
+- `docs/conventions.md` — user-facing naming reference.
+- `wiki/` design memory: `THE_STORY_BEHIND_THE_PROJECT.md`, `SYNC_MECHANISM.md`, `INSTRUCTION_TEMPLATE.md`.
+- `examples/` with before/after demos plus a sample `.wayfinder.json`.
+- `README.md`, `CONTRIBUTING.md`, `LICENSE`, and a `cli/` placeholder for the v0.3 CLI roadmap.
+- Bootstrap → tag flow as a single command (`/wayfinder`).
+- Git safety: refuses to modify files when working tree is dirty; commits its own work with clear messages.
+
+---
+
+[Unreleased]: https://github.com/selfishprimate/semantic-wayfinder/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.1.2
+[0.1.1]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.1.1
+[0.1.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.1.0

@@ -1,7 +1,7 @@
 ---
 name: wayfinder
 description: Tags page roots and component roots in your codebase with semantic identity classes so AI agents can target them precisely instead of guessing. Reduces token burn and back-and-forth on edit requests. Runs on first invocation to set up the project; subsequent invocations only touch new or changed files.
-version: 0.1.1
+version: 0.1.2
 license: MIT
 homepage: https://github.com/selfishprimate/semantic-wayfinder
 ---

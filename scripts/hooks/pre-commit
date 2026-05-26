@@ -1,11 +1,19 @@
 #!/bin/sh
 # Pre-commit hook for Semantic Wayfinder.
 #
-# When the source-of-truth SKILL.md (.claude/skills/wayfinder/SKILL.md) is
-# part of this commit, automatically propagate it to .agents/ and .gemini/
-# and re-stage them so the commit contains all three in sync. This makes
-# drift impossible in practice: if you forget to run sync-skills.sh, the
-# hook does it for you.
+# Two responsibilities, both gated on the source-of-truth SKILL.md being staged:
+#
+# 1. Auto-bump the version in SKILL.md frontmatter (unless the user already
+#    bumped it manually as part of their edit).
+#
+# 2. Sync the change to the .agents/ and .gemini/ copies and stage them, so
+#    a single commit always carries the three SKILL.md files together.
+#
+# Bump-type detection reads .git/COMMIT_EDITMSG (populated by `git commit -m`).
+# Default is patch. Override by including one of these tokens in the commit
+# message:
+#   - "BREAKING:" or "breaking:" or "!:"  → major bump
+#   - "feat:" or "FEAT:"                  → minor bump
 #
 # Activated via `git config core.hooksPath scripts/hooks` — see CONTRIBUTING.md.
 
@@ -13,10 +21,47 @@ set -e
 
 SOURCE=".claude/skills/wayfinder/SKILL.md"
 
-if git diff --cached --name-only --diff-filter=ACMR | grep -qx "$SOURCE"; then
-  echo "[wayfinder] $SOURCE staged — syncing the other copies..."
-  ./scripts/sync-skills.sh
-  git add .agents/skills/wayfinder/SKILL.md .gemini/skills/wayfinder/SKILL.md
-  ./scripts/sync-skills.sh --check
-  echo "[wayfinder] all three SKILL.md copies in sync."
+if ! git diff --cached --name-only --diff-filter=ACMR | grep -qx "$SOURCE"; then
+  exit 0
 fi
+
+echo "[wayfinder] $SOURCE staged — checking version + syncing copies..."
+
+# ─── Version bump (only if not already bumped this commit) ─────────────────
+
+CURRENT=$(grep "^version:" "$SOURCE" | head -1 | sed 's/^version: *//' | tr -d ' ')
+HEAD_VERSION=$(git show HEAD:"$SOURCE" 2>/dev/null | grep "^version:" | head -1 | sed 's/^version: *//' | tr -d ' ' || echo "")
+
+if [ -z "$HEAD_VERSION" ] || [ "$CURRENT" = "$HEAD_VERSION" ]; then
+  # Determine bump type from commit message if available
+  BUMP_TYPE="patch"
+  MSG_FILE=".git/COMMIT_EDITMSG"
+
+  if [ -f "$MSG_FILE" ]; then
+    if grep -qE "(^|\s)(BREAKING:|breaking:|!:)" "$MSG_FILE"; then
+      BUMP_TYPE="major"
+    elif grep -qE "(^|\s)(feat:|FEAT:)" "$MSG_FILE"; then
+      BUMP_TYPE="minor"
+    fi
+  fi
+
+  NEW_VERSION=$(./scripts/bump-version.sh "$BUMP_TYPE")
+  echo "[wayfinder] version $CURRENT → $NEW_VERSION ($BUMP_TYPE)"
+else
+  echo "[wayfinder] version already bumped manually: $HEAD_VERSION → $CURRENT"
+fi
+
+# ─── Soft warning if CHANGELOG wasn't touched ──────────────────────────────
+
+if ! git diff --cached --name-only --diff-filter=ACMR | grep -qx "CHANGELOG.md"; then
+  echo "[wayfinder] ⚠ CHANGELOG.md not staged — consider adding an entry for this change."
+fi
+
+# ─── Sync to .agents/ and .gemini/ ─────────────────────────────────────────
+
+./scripts/sync-skills.sh
+git add .agents/skills/wayfinder/SKILL.md .gemini/skills/wayfinder/SKILL.md
+git add "$SOURCE"   # re-stage in case we bumped the version
+./scripts/sync-skills.sh --check
+
+echo "[wayfinder] all three SKILL.md copies in sync."
