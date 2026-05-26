@@ -379,18 +379,40 @@ This is the core logic. Runs in both bootstrap and incremental modes, in two pha
 Build a map of the project's pages and components before writing anything to source files.
 
 **1. Discover page files.** Pages are files matching project-router conventions:
-- `app/**/page.{tsx,jsx,ts,js}` (Next.js App Router)
+- `app/**/page.{tsx,jsx,ts,js}` (Next.js App Router) — match at **every depth** under `app/`
 - `app/**/page.{vue,svelte}` (Vue/Svelte adaptations)
 - `pages/**/*.{tsx,jsx,ts,js}` excluding `_app.*`, `_document.*`, `api/**` (Next.js Pages Router)
 - `src/routes/**/+page.svelte` (SvelteKit)
 - `src/pages/**/*.{vue,svelte}` (Nuxt / Astro / similar)
 
-For each page file, derive the page identity:
+**Discovery must be exhaustive.** Use a recursive directory walk that visits every subdirectory of the page roots above. Common ways to fail this:
+- Listing only top-level entries of `app/` (e.g. via `ls app/`) instead of recursively walking deeper. A page at `app/login/page.tsx` is a sibling of a page at `app/dashboard/settings/page.tsx` — both must be found.
+- Stopping after the first N directories. There is no upper bound on pages; process all of them.
+- Skipping directories whose names are wrapped in parens. Those are **route groups** (`app/(marketing)/`, `app/(auth)/`) and pages inside them are real pages. The parens segment is dropped only when *deriving the class name*, not when discovering files.
+
+After discovery, **list every page file you found, with its derived class name, before doing anything else**. The user should be able to glance at the list and notice if anything obvious is missing.
+
+**Next.js special files are skipped** (same category as `layout.tsx` — framework plumbing, file-system convention already serves as their wayfinding):
+- `layout.tsx`, `template.tsx`, `default.tsx`
+- `error.tsx`, `global-error.tsx`, `loading.tsx`, `not-found.tsx`
+- `route.ts`, `middleware.ts`
+- `_app.tsx`, `_document.tsx`, `_error.tsx` (Pages Router conventions)
+
+For each remaining page file, derive the page identity:
 - Strip the suffix and route-file noise (`page.tsx`, `+page.svelte`, etc.)
-- Drop route-group parens segments like `(marketing)`
+- Drop route-group parens segments like `(marketing)`, `(auth)`, `(dashboard)`
+- Drop dynamic-route brackets — `[id]` becomes `Id`, `[slug]` becomes `Slug`, `[...params]` becomes `Params` (catch-all bracket dropped, name preserved)
+- Drop parallel-route prefixes `@` — `@modal` is treated as a sibling, not a path segment for naming
 - Join remaining path segments and camelCase them
 - Append `Page`
-- Examples: `app/page.tsx` → `homePage` (the empty path becomes `home`). `app/about/page.tsx` → `aboutPage`. `app/dashboard/settings/page.tsx` → `dashboardSettingsPage`.
+- Examples:
+  - `app/page.tsx` → `homePage` (empty path becomes `home`)
+  - `app/about/page.tsx` → `aboutPage`
+  - `app/dashboard/settings/page.tsx` → `dashboardSettingsPage`
+  - `app/(marketing)/landing/page.tsx` → `landingPage` (route group dropped)
+  - `app/(auth)/login/page.tsx` → `loginPage` (route group dropped)
+  - `app/task/[id]/page.tsx` → `taskIdPage`
+  - `app/blog/[slug]/page.tsx` → `blogSlugPage`
 
 **2. Discover component files.** Components live under any of:
 - `components/`
@@ -399,10 +421,20 @@ For each page file, derive the page identity:
 - `lib/components/`
 - Any folder named `components/` at any depth inside `src/` or `app/`
 
-For each component file, derive a candidate identity:
+**Discovery must be exhaustive** — recursive walk through every subfolder of each root. Same failure modes as page discovery apply: don't stop after the first N entries, don't skip nested folders.
+
+In-scope file extensions: `.tsx`, `.jsx`, `.ts`, `.js` (when the file's default export is a React component), `.vue`, `.svelte`.
+
+**Skip these files inside components/ directories:**
+- Files with `.test.` or `.spec.` in the name (test files)
+- Files starting with an underscore (`_utils.ts`, `_helpers.ts` — private helpers)
+- `index.{ts,tsx,js,jsx}` barrel files that only re-export — they contain no component definition of their own
+- Pure utility files (no JSX returned). If a `.ts` file doesn't export a function whose return type contains JSX, it's not a component file.
+
+For each remaining component file, derive a candidate identity:
 - Take the filename without extension
-- Convert PascalCase → camelCase
-- This is the candidate role/identity (e.g., `Header.tsx` → `header`, `DocsSidebar.tsx` → `docsSidebar`).
+- Normalize separators: `kebab-case`, `snake_case`, or `PascalCase` filenames all become a single camelCase token (`task-card.tsx`, `task_card.tsx`, `TaskCard.tsx` → all yield `taskCard`)
+- This is the candidate role/identity. Examples: `Header.tsx` → `header`, `DocsSidebar.tsx` → `docsSidebar`, `task-card.tsx` → `taskCard`, `quick-add.tsx` → `quickAdd`.
 
 **3. Detect role collisions.** Group component candidates by their "role" — the last word of the PascalCase filename (or the whole filename if it's a single word):
 
@@ -469,21 +501,44 @@ For each component, apply this decision tree:
 
 The siteMap is consulted during Phase 2 (no re-derivation) and persisted to `.wayfinder.json` for later runs.
 
-**7. Report resolutions to the user.** When prefixes were added (either from real collisions or from the reserved-words list), show the decisions clearly so the user can object:
+**7. Report the discovery plan to the user.** Before Phase 2 starts writing anything, show the full siteMap so the user can spot missing files or wrong resolutions. This is a hard checkpoint — Phase 2 may not begin until the user confirms.
 
 ```
-[wayfinder] Prefix decisions:
-  components/Header.tsx        → mainHeader   (reserved word — main is the global one)
-  components/AdminHeader.tsx   → adminHeader  (collision with Header, qualified by filename)
-  components/Footer.tsx        → mainFooter   (reserved word — bare filename, no other competitors)
-  components/Sidebar.tsx       → mainSidebar  (reserved word)
-  components/DocsSidebar.tsx   → docsSidebar  (collision with Sidebar, qualified by filename)
-  components/TableOfContents.tsx → tableOfContents  (multi-word, no prefix needed)
-  components/ContactForm.tsx   → contactForm  (last word `form` is reserved BUT filename has qualifier "Contact")
-  components/QuickAdd.tsx      → quickAdd     (no prefix — not reserved, no collision)
+[wayfinder] Discovery complete. Here's what I'll tag:
 
-Confirm to proceed, or type 'rename' to override any of these.
+PAGES (10 found):
+  app/page.tsx                          → homePage
+  app/about/page.tsx                    → aboutPage
+  app/calendar/page.tsx                 → calendarPage
+  app/login/page.tsx                    → loginPage
+  app/signup/page.tsx                   → signupPage
+  app/forgot-password/page.tsx          → forgotPasswordPage
+  app/settings/page.tsx                 → settingsPage
+  app/terms/page.tsx                    → termsPage
+  app/task/[id]/page.tsx                → taskIdPage
+  app/(auth)/admin/page.tsx             → adminPage  (route group "(auth)" dropped)
+
+COMPONENTS (14 found):
+  components/header.tsx                 → mainHeader      (reserved word, bare)
+  components/footer.tsx                 → mainFooter      (reserved word, bare)
+  components/logo.tsx                   → logo            (not reserved, no collision)
+  components/mobile-nav.tsx             → mobileNav       (nav reserved BUT filename has "Mobile" qualifier)
+  components/task-card.tsx              → taskCard        (card reserved BUT filename has "Task" qualifier)
+  components/quick-add.tsx              → quickAdd        (no prefix needed)
+  components/theme-toggle.tsx           → themeToggle     (no prefix needed)
+  ... [list all components, each with reason for its resolution]
+
+SKIPPED (framework conventions, out of scope):
+  app/layout.tsx                        (layout file)
+  app/error.tsx                         (Next.js error boundary)
+  app/loading.tsx                       (Next.js loading UI)
+  app/not-found.tsx                     (Next.js 404 page)
+
+Look this over. If anything's missing or named wrong, tell me now —
+I'll re-scan or accept overrides. Otherwise reply "go" and I'll start tagging.
 ```
+
+The user's confirmation is required before Phase 2. If they spot a missing file (e.g., "you missed `app/dashboard/page.tsx`"), re-run Phase 1 discovery focusing on that subtree. Do not start writing classes with an incomplete plan — the cost of a bad run is non-trivial (uncommitted changes, manifest drift), so the up-front check is worth it.
 
 ### Phase 2 — Apply tags
 
@@ -644,6 +699,8 @@ If anything went wrong during the run (parse errors, unreadable files, git probl
 - Never write to the same `tagged` entry without checking for duplicates
 - **Never defer manifest writes to "end of run."** Each tagged file must be paired with its manifest entry in the same atomic transaction, with `.wayfinder.json` persisted to disk before moving to the next file. A run that gets interrupted mid-tagging must leave a manifest that correctly lists every file that was actually tagged
 - **Never report success when work is unfinished.** If Phase 2 ends with siteMap entries that have no corresponding manifest entry (and weren't recorded as intentional skips), the closing summary must explicitly tell the user the run is incomplete and that re-running `/wayfinder` will finish the job
+- **Never start Phase 2 without showing the full discovery plan and getting explicit user confirmation.** A bad discovery (missing pages, wrong resolutions) silently produces a bad run; the cheap up-front review prevents it
+- **Never assume page discovery is complete after a shallow scan.** Always recursively walk the route roots (`app/`, `pages/`, `src/routes/`) at every depth. A page at `app/login/page.tsx` is just as important as one at `app/dashboard/settings/billing/page.tsx`
 
 ---
 
