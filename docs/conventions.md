@@ -58,9 +58,20 @@ The root JSX element of a page file gets a `{page}Page` class. The `page` part c
 | `app/dashboard/settings/page.tsx` | `dashboardSettingsPage` |
 | `pages/about.tsx` | `aboutPage` |
 | `app/(marketing)/landing/page.tsx` | `landingPage` (route group parens are ignored) |
+| `app/task/[id]/page.tsx` | `taskIdPage` (dynamic-segment brackets stripped, segment name preserved) |
+| `app/docs/[...path]/page.tsx` | `docsPathPage` (catch-all dots dropped, segment name preserved) |
 | `src/routes/about/+page.svelte` | `aboutPage` |
 
 Nested routes concatenate path segments in camelCase (or kebab-case): `app/dashboard/settings/billing/page.tsx` → `dashboardSettingsBillingPage`.
+
+**Next.js routing syntax is normalized** before segments are joined:
+
+- **Route groups** (`(marketing)`, `(auth)`) — dropped entirely. They're organizational folders, not URL segments.
+- **Dynamic segments** (`[id]`, `[slug]`) — brackets stripped; the segment name is kept and folded into the camelCase chain. `app/task/[id]/page.tsx` → `taskIdPage`, `app/blog/[slug]/page.tsx` → `blogSlugPage`.
+- **Catch-all segments** (`[...params]`, `[[...slug]]`) — dots and outer brackets dropped; the name itself is preserved. `app/docs/[...path]/page.tsx` → `docsPathPage`.
+- **Parallel routes** (`@modal`, `@drawer`) — treated as siblings, not URL segments — dropped from the name entirely.
+
+The name derives from the filename, not the rendered URL. A page slug like `taskIdPage` describes the *file* (`[id]` is part of the route shape), not "the page for a specific task ID at runtime." This is why the name stays stable across different rendered task instances — and why it remains greppable to a single file no matter which ID is on screen.
 
 ### Components
 
