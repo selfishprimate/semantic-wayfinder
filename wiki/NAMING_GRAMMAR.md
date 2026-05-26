@@ -59,11 +59,27 @@ The specific design questions resolved during the rewrite, with their answers an
 
 ### Default prefix: `main` or nothing?
 
-**Decision:** Nothing.
+**Decision:** Nothing, with one important exception.
 
-Earlier sketches treated `main` as the default prefix for global components (so a project's only Header would be `mainHeader`). This was simplified: `main` is a **disambiguation prefix**, not a default. If there's only one Header in the project, the class is just `header`. The prefix appears only when two or more components compete for the same role.
+Earlier sketches treated `main` as the default prefix for all global components (so a project's only Header would be `mainHeader`). The initial v0.1.1 design simplified this: `main` would be a **disambiguation prefix only**, not a default — if there's only one Header in the project, the class would be just `header`.
 
-Why: the prefix adds noise when it's not earning its keep. A solo `Header` doesn't collide with anything; nothing is gained by calling it `mainHeader`. When a `MobileHeader` or `AdminHeader` enters the project, the incremental run detects the new collision and proposes renaming both — at that moment, the prefix earns its place.
+**Then the first real test (Plainify, 2026-05-26) surfaced a problem:** a bare `header` class doesn't grep cleanly because `<header>` is itself an HTML element. Every `<header>` tag in the project, every comment mentioning "header," every import of a Header component — all show up in `grep header` results. The class is ambient noise rather than a unique identity marker.
+
+**Refinement: the reserved-words list.** A short list of role names always get a `main` prefix when the filename is bare, even without a real component collision:
+
+- **HTML elements** (will always appear in source as `<tag>` form): `header`, `footer`, `nav`, `main`, `aside`, `section`, `article`, `form`, `button`, `input`, `label`, `select`, `dialog`, `menu`, `details`, `summary`, `figure`, `table`
+- **Universal UI patterns** (common class words across every codebase): `sidebar`, `modal`, `card`, `dropdown`, `tooltip`, `banner`, `alert`, `toast`, `badge`, `chip`, `avatar`, `icon`, `list`, `link`, `divider`
+
+The rule:
+
+- `Header.tsx` alone → `mainHeader` (reserved word, bare filename)
+- `AdminHeader.tsx` alone → `adminHeader` (reserved word BUT qualifier in filename)
+- `TableOfContents.tsx` alone → `tableOfContents` (not reserved, no prefix)
+- `QuickAdd.tsx` alone → `quickAdd` (not reserved, no prefix)
+
+For roles outside the list, the original rule still holds: no prefix unless a real collision shows up.
+
+Why this exception: the simpler rule worked for cleanly-named multi-word components, but the test revealed that single-word common roles are *always* noisy regardless of whether another component shares the role. Hardcoding a small reserved list catches the noise without forcing every component to carry `main`.
 
 ### Body tag vs page root?
 
@@ -148,7 +164,7 @@ These were proposed or actively sketched and then cut. Re-proposing any of them 
 - **Auto-wrapping Fragment-rooted pages in `<div>`**. Cut: structural JSX modification, beyond Wayfinder's scope.
 - **Deeper hierarchies (5+ tokens)** like `aboutPageContactFormSubmitButton`. Cut: unreadable, signals architecture problems rather than naming problems.
 - **Tagging atomic primitives by default** (`Button`, `Card`, `Input`). Cut for v0.1.x — too noisy, every button in the codebase would carry a class. Under review for v0.2 with opt-in.
-- **`main` as default prefix** even when there's no collision. Cut: adds noise without earning value.
+- **`main` as default prefix for ALL global components** (even non-reserved ones like `TableOfContents`). Cut: would add noise to already-unique names. The narrower version — `main` as default only for reserved-word roles — was adopted after the Plainify test.
 
 ---
 
@@ -159,6 +175,7 @@ These were proposed or actively sketched and then cut. Re-proposing any of them 
 - **Vue and Svelte conventions.** The grammar assumes filenames are PascalCase (React convention). Vue/Svelte communities lean toward kebab-case files. Adapter logic needed for v0.2.
 - **Multi-language pages.** `app/[locale]/about/page.tsx` — should the locale appear in the class (`enAboutPage`), or be ignored (`aboutPage`)? Probably ignored, but worth confirming with a real i18n project.
 - **Pattern learning across runs.** `.wayfinder-patterns.json` was floated for v0.4 — recording user-chosen names for ambiguous components so the next project's bootstrap learns from prior choices. Speculative.
+- **Configurable reserved-words list.** v0.1.1 hardcodes the reserved list inside the skill. v0.2 could expose it as `reservedWords` in `.wayfinder.json` so users can add domain-specific noisy words (e.g., a media-streaming project might add `player`, `track`, `stream`). For now, the hardcoded list is the universally safe baseline.
 
 ---
 

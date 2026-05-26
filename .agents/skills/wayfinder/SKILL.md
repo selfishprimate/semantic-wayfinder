@@ -193,7 +193,11 @@ Nothing else is tagged. Inline sections inside page files, layout files, generat
 ### Rules when creating or modifying code
 
 1. **For a new page file**: add the identity class to the root JSX element (the outermost `<main>`, `<div>`, etc.). The class name is `{path}Page` per the pattern above.
-2. **For a new component file**: add the identity class to the root JSX element. The class name is the filename camelCased. If the filename is generic (`Header`, `Footer`, `Sidebar`, `Nav`, `Button`, `Card`, `Input`, `Modal`) and another component already uses that role, prefix yours with `main` for the global one or a domain word for specialized ones.
+2. **For a new component file**: add the identity class to the root JSX element. The class name is the filename camelCased.
+   - **Reserved role names always get a `main` prefix when the filename is bare**, even if no other component shares the role. The reserved list covers HTML element names (`header`, `footer`, `nav`, `main`, `aside`, `section`, `article`, `form`, `button`, `input`, `label`, `select`, `dialog`, `menu`, `details`, `summary`, `figure`, `table`) and universal UI patterns (`sidebar`, `modal`, `card`, `dropdown`, `tooltip`, `banner`, `alert`, `toast`, `badge`, `chip`, `avatar`, `icon`, `list`, `link`, `divider`). So `Header.tsx` → `mainHeader`, `Footer.tsx` → `mainFooter`, `Card.tsx` → `mainCard`.
+   - **If the filename already has a qualifier** (`AdminHeader.tsx`, `FlightCard.tsx`, `MobileNav.tsx`), use the camelCased filename as-is — no extra `main`. The qualifier already disambiguates from the reserved word.
+   - **For non-reserved filenames** without collisions, use the camelCased filename directly (`ContactForm.tsx` → `contactForm`, `TableOfContents.tsx` → `tableOfContents`, `QuickAdd.tsx` → `quickAdd`).
+   - **If you add a second component with the same role as a bare one** (e.g., adding `MobileHeader.tsx` to a project that has `Header.tsx`), the bare one gets renamed to `mainHeader` — but that's a job for `/wayfinder` to detect and ask about, not for you to do mid-conversation.
 3. **Place the identity class first** in the `className` list, before utility classes.
 4. **Additive only.** Never remove, replace, or reorder existing utility classes. Never delete a Wayfinder identity class either — if removal is intended, the user runs `/wayfinder --remove`.
 5. **Idempotent.** Never overwrite an existing identity class that already matches the convention.
@@ -403,25 +407,49 @@ For each component file, derive a candidate identity:
 **3. Detect role collisions.** Group component candidates by their "role" — the last word of the PascalCase filename (or the whole filename if it's a single word):
 
 - `Header.tsx` → role = `header`
-- `AdminHeader.tsx` → role = `header`
-- `DocsSidebar.tsx` → role = `sidebar`
+- `AdminHeader.tsx` → role = `header` (last word)
+- `DocsSidebar.tsx` → role = `sidebar` (last word)
 - `Sidebar.tsx` → role = `sidebar`
-- `ContactForm.tsx` → role = `contactForm` (multi-word filenames keep their whole name as role)
-- `TableOfContents.tsx` → role = `tableOfContents`
+- `MobileNav.tsx` → role = `nav` (last word)
+- `ContactForm.tsx` → role = `form` (last word)
+- `TableOfContents.tsx` → role = `contents` (last word)
+- `FlightCard.tsx` → role = `card` (last word)
+- `QuickAdd.tsx` → role = `quickAdd` (single token; whole filename is the role)
+- `ThemeToggle.tsx` → role = `toggle` (last word)
 
-For multi-word filenames, treat the *whole filename* as a unique role — collisions between different multi-word filenames are rare and usually intentional.
+Single-word filenames have themselves as the role. Multi-word filenames use the trailing PascalCase word.
 
-For single-word filenames (`Header`, `Footer`, `Sidebar`, `Nav`, `Card`, `Button`, etc.), check whether another component shares that role.
+**4. Check the reserved-words list.** Some role names are inherently noisy under `grep` even without a component-level collision — either because they're native HTML element names (`<header>`, `<footer>`, `<nav>`) or because they're universal UI patterns that appear in every codebase. A bare `header` class would compete with every `<header>` element in the project for grep attention.
 
-**4. Resolve names with collision rules.**
+The hardcoded reserved list (v0.1.1):
 
-- **No collision** → use the camelCased filename directly. `TableOfContents.tsx` → `tableOfContents`. `Header.tsx` (only one in project) → `header`.
-- **Collision detected** → resolve as follows:
-  - The component whose path is shortest / closest to the project root is the most "global." Tag it with `main` prefix: `components/Header.tsx` → `mainHeader`.
-  - Specialized variants use their filename's leading word(s) as the prefix: `AdminHeader.tsx` → `adminHeader`. `MobileHeader.tsx` → `mobileHeader`. `BlogPostHeader.tsx` → `blogPostHeader`.
-  - Tie-breaker (two components both at top of `components/` with no leading qualifier in filename — e.g., `Header.tsx` and `Heading.tsx` if they collided): ask the user.
+| Tier | Words |
+|---|---|
+| **HTML elements** | `header`, `footer`, `nav`, `main`, `aside`, `section`, `article`, `form`, `button`, `input`, `label`, `select`, `dialog`, `menu`, `details`, `summary`, `figure`, `table` |
+| **Universal UI patterns** | `sidebar`, `modal`, `card`, `dropdown`, `tooltip`, `banner`, `alert`, `toast`, `badge`, `chip`, `avatar`, `icon`, `list`, `link`, `divider` |
 
-**5. Build the siteMap.** Populate `config.siteMap` with the resolved names:
+If a component's role (from step 3) appears in either tier, treat it as if it were colliding even when no other component shares the role. This guarantees that a bare `Header.tsx` in a small project still resolves to `mainHeader`, never just `header`.
+
+**5. Resolve names.**
+
+For each component, apply this decision tree:
+
+- **No collision AND role not reserved** → use the camelCased filename directly. `TableOfContents.tsx` → `tableOfContents`. `QuickAdd.tsx` → `quickAdd`. `ThemeToggle.tsx` → `themeToggle`.
+
+- **Reserved role AND filename has no qualifier (bare)** → prepend `main`. `Header.tsx` → `mainHeader`. `Sidebar.tsx` → `mainSidebar`. `Card.tsx` → `mainCard`. This applies even when no other component shares the role — the reserved word is treated as a permanent collision risk.
+
+- **Reserved role AND filename already has a qualifier** → use the camelCased filename as-is. `MobileNav.tsx` → `mobileNav`. `AdminHeader.tsx` → `adminHeader`. `FlightCard.tsx` → `flightCard`. The filename's leading word already disambiguates from the reserved word, so no extra `main` is needed.
+
+- **Real collision: bare filename + qualified filenames** (e.g., `Header.tsx` AND `AdminHeader.tsx` together):
+  - Bare → `mainHeader`
+  - Qualified → `adminHeader`
+
+- **Real collision: all filenames have qualifiers** (e.g., `AdminHeader.tsx` + `MobileHeader.tsx`, no bare `Header.tsx`):
+  - Each uses its own camelCased filename: `adminHeader` + `mobileHeader`. No `main` needed because the absence of a bare default means there's nothing to call "the main one."
+
+- **Tie-breaker** (two bare filenames at the same level — e.g., `Header.tsx` AND `Heading.tsx`): ask the user how to disambiguate.
+
+**6. Build the siteMap.** Populate `config.siteMap` with the resolved names:
 
 ```json
 "siteMap": {
@@ -441,14 +469,18 @@ For single-word filenames (`Header`, `Footer`, `Sidebar`, `Nav`, `Card`, `Button
 
 The siteMap is consulted during Phase 2 (no re-derivation) and persisted to `.wayfinder.json` for later runs.
 
-**6. Report collision resolutions to the user.** When prefixes were added because of collisions, show the decisions clearly so the user can object:
+**7. Report resolutions to the user.** When prefixes were added (either from real collisions or from the reserved-words list), show the decisions clearly so the user can object:
 
 ```
-[wayfinder] Collisions resolved:
-  components/Header.tsx        → mainHeader   (most global)
-  components/AdminHeader.tsx   → adminHeader  (from filename)
-  components/Sidebar.tsx       → mainSidebar  (most global)
-  components/DocsSidebar.tsx   → docsSidebar  (from filename)
+[wayfinder] Prefix decisions:
+  components/Header.tsx        → mainHeader   (reserved word — main is the global one)
+  components/AdminHeader.tsx   → adminHeader  (collision with Header, qualified by filename)
+  components/Footer.tsx        → mainFooter   (reserved word — bare filename, no other competitors)
+  components/Sidebar.tsx       → mainSidebar  (reserved word)
+  components/DocsSidebar.tsx   → docsSidebar  (collision with Sidebar, qualified by filename)
+  components/TableOfContents.tsx → tableOfContents  (multi-word, no prefix needed)
+  components/ContactForm.tsx   → contactForm  (last word `form` is reserved BUT filename has qualifier "Contact")
+  components/QuickAdd.tsx      → quickAdd     (no prefix — not reserved, no collision)
 
 Confirm to proceed, or type 'rename' to override any of these.
 ```
@@ -556,6 +588,7 @@ If anything went wrong (parse errors, unreadable files, git problems), report it
 - Never modify files when git is dirty without explicit user override
 - Never overwrite existing identity classes that match the project's conventions
 - Never produce a bare role name for a colliding component — every colliding role must carry a disambiguation prefix (`main` or domain)
+- Never produce a bare reserved-word class (`header`, `footer`, `nav`, `sidebar`, `card`, `button`, etc.) when the source filename is bare. The reserved-words list applies even without a real component collision — bare reserved words are too ambient under `grep` to be useful identity classes
 - Never echo a filename's PascalCase as the class name. Casing always follows `.wayfinder.json` — `MarketingHeader.tsx` becomes `marketingHeader` (camelCase) or `marketing-header` (kebab-case), never `MarketingHeader`
 - Never tag inline sections inside page files, layout files, generated files, build outputs, test files, or gitignored paths
 - Never wrap a Fragment-rooted page in a `<div>` to make it taggable — report and let the user decide

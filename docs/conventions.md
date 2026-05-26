@@ -72,31 +72,50 @@ The root JSX element of a component file gets the component's identity name, der
 | `components/ContactForm.tsx` | `contactForm` |
 | `components/DocsSidebar.tsx` | `docsSidebar` |
 | `components/FlightCard.tsx` | `flightCard` |
-| `components/Header.tsx` (only Header in project) | `header` |
-| `components/Footer.tsx` (only Footer) | `footer` |
+| `components/Header.tsx` (only Header in project) | `mainHeader` (reserved word — always prefixed even alone) |
+| `components/Footer.tsx` (only Footer) | `mainFooter` (reserved word) |
 
 ### Collisions — when prefixes appear
 
-When two or more components share the same role (e.g., a project has both `Header.tsx` and `AdminHeader.tsx`), bare names would collide under `grep`. Wayfinder detects this during Phase 1 (structural analysis) and adds disambiguation prefixes:
+A prefix appears for one of two reasons: a real role collision between two components, or the component's role being on the reserved-words list.
+
+**Reason 1 — real collision.** When two or more components share the same role (e.g., `Header.tsx` AND `AdminHeader.tsx`), Wayfinder detects this during Phase 1 and adds disambiguation prefixes.
+
+**Reason 2 — reserved role.** Some role names are so common in HTML/CSS/UI vocabulary that a bare class would be drowned in `grep` noise even when no other component shares the role. The reserved-words list always triggers a `main` prefix on bare filenames.
 
 | Setup | Resolved classes |
 |---|---|
-| Only `components/Header.tsx` | `header` |
+| Only `components/Header.tsx` | **`mainHeader`** (reserved word — single occurrence still prefixed) |
+| Only `components/TableOfContents.tsx` | `tableOfContents` (not reserved, no prefix) |
 | `components/Header.tsx` + `components/AdminHeader.tsx` | `mainHeader` + `adminHeader` |
 | `components/Sidebar.tsx` + `components/DocsSidebar.tsx` | `mainSidebar` + `docsSidebar` |
 | `components/Header.tsx` + `components/MobileHeader.tsx` + `components/AdminHeader.tsx` | `mainHeader` + `mobileHeader` + `adminHeader` |
+| `components/AdminHeader.tsx` + `components/MarketingHeader.tsx` (no bare `Header.tsx`) | `adminHeader` + `marketingHeader` (no `main`Header — there's no "default" to mark) |
+| `components/MobileNav.tsx` alone (no bare `Nav.tsx`) | `mobileNav` (qualifier already disambiguates `nav`) |
+| `components/FlightCard.tsx` alone | `flightCard` (qualifier disambiguates `card`) |
 
 The prefix rules:
 
-- **`main`** is reserved for the "most global" / "default" instance — the Header you use on the marketing site, the Sidebar that ships site-wide.
-- **Domain or scope prefix** is taken from the filename when present. `AdminHeader.tsx` already names its scope (`admin`), so no analysis needed: it becomes `adminHeader`.
+- **`main`** marks the "most global" / "default" instance. Used when a bare filename (no qualifier in front of the reserved word) appears, either alone or alongside qualified variants.
+- **Domain or scope prefix** comes from the filename when present. `AdminHeader.tsx` → `adminHeader`, `MarketingHeader.tsx` → `marketingHeader`, `MobileNav.tsx` → `mobileNav`.
 - **A component with a scope-bearing name is inherently scoped.** `docsSidebar` says "I am the docs sidebar." If someone uses it outside docs, the name lies — and that's a code review concern, not a Wayfinder concern.
+
+### The reserved-words list (v0.1.1)
+
+These role names always get a `main` prefix when the filename is bare (no qualifier in front). Hardcoded in the skill; not user-configurable in v0.1.x.
+
+| Tier | Words |
+|---|---|
+| **HTML elements** (collide with literal tags under `grep`) | `header`, `footer`, `nav`, `main`, `aside`, `section`, `article`, `form`, `button`, `input`, `label`, `select`, `dialog`, `menu`, `details`, `summary`, `figure`, `table` |
+| **Universal UI patterns** (common across every codebase) | `sidebar`, `modal`, `card`, `dropdown`, `tooltip`, `banner`, `alert`, `toast`, `badge`, `chip`, `avatar`, `icon`, `list`, `link`, `divider` |
+
+Roles outside the list (e.g., `quickAdd`, `themeToggle`, `tableOfContents`, `pricingTier`, `flightCard`, `taskCard`) are considered unique enough on their own — no prefix unless a real component collision shows up.
 
 ### Components with already-unique filenames
 
-If the filename is descriptive enough that it can't collide (`TableOfContents`, `FlightCard`, `NewsletterSignup`, `PricingTier`), Wayfinder uses it as-is without adding `main` or any other prefix.
+If the filename is descriptive enough that its role isn't reserved and doesn't collide (`TableOfContents`, `NewsletterSignup`, `PricingTier`, `QuickAdd`, `ThemeToggle`), Wayfinder uses the camelCased filename as-is without any prefix.
 
-The collision check is based on the **role** (last word of the filename in PascalCase, or the whole name if it's a single word). `TableOfContents` doesn't share its role with anything else, so no prefix is needed.
+The role check uses the **last word** of the PascalCase filename. `TableOfContents` → role `contents` (not reserved). `FlightCard` → role `card` (reserved BUT the filename has a qualifier "Flight", so it resolves to `flightCard` without `main`). `QuickAdd` → role `quickAdd` (single token, not reserved).
 
 ## What about reused components?
 
@@ -127,6 +146,7 @@ Wayfinder will never wrap your JSX in a `<div>` for you. That would cross the "a
 These never appear in Wayfinder output:
 
 - **Bare generic role names when there's a collision.** Wayfinder always prefixes them: never just `header` when two Headers exist.
+- **Bare reserved-word classes.** Even without a collision, words on the reserved list always get a `main` prefix when the filename is bare. A standalone `Header.tsx` resolves to `mainHeader`, never `header`.
 - **PascalCase echoes.** `MarketingHeader.tsx` becomes `marketingHeader` (camel) or `marketing-header` (kebab), never `MarketingHeader`.
 - **Mixed casing.** No `wf-aboutPage` (kebab dash + camelCase identifier). Prefix style follows casing.
 - **Page context inside component classes.** A `ContactForm` is never `aboutPageContactForm` — even if it lives on `app/about/page.tsx`.
@@ -167,13 +187,15 @@ Produces these classes:
 | Root of `app/page.tsx` | `homePage` |
 | Root of `app/about/page.tsx` | `aboutPage` |
 | Root of `app/pricing/page.tsx` | `pricingPage` |
-| Root of `components/Header.tsx` | `header` |
-| Root of `components/Footer.tsx` | `footer` |
-| Root of `components/ContactForm.tsx` | `contactForm` |
-| Root of `components/PricingTier.tsx` | `pricingTier` |
-| Root of `components/TableOfContents.tsx` | `tableOfContents` |
-| Root of `components/Newsletter.tsx` | `newsletter` |
+| Root of `components/Header.tsx` | `mainHeader` (reserved word) |
+| Root of `components/Footer.tsx` | `mainFooter` (reserved word) |
+| Root of `components/ContactForm.tsx` | `contactForm` (`form` is reserved BUT filename has qualifier) |
+| Root of `components/PricingTier.tsx` | `pricingTier` (not reserved, no collision) |
+| Root of `components/TableOfContents.tsx` | `tableOfContents` (not reserved) |
+| Root of `components/Newsletter.tsx` | `newsletter` (not reserved, no collision) |
 | `app/layout.tsx` | *(not tagged)* |
 | Inline `<section>` inside `app/about/page.tsx` | *(not tagged)* |
 
-If later a second header is added (`components/AdminHeader.tsx`), Wayfinder's incremental run detects the role collision and proposes renaming `header` → `mainHeader`, plus adding `adminHeader` for the new file. User confirms; both classes are updated atomically and the manifest is rewritten.
+If later a second header is added (`components/AdminHeader.tsx`), Wayfinder's incremental run detects the role collision and confirms the existing `mainHeader` stays (the bare filename is still the global one) plus adds `adminHeader` for the new file. The manifest is updated accordingly.
+
+If `MobileHeader.tsx` is added instead, the bare `Header.tsx` keeps `mainHeader` and the new file becomes `mobileHeader` — the qualifier in the filename is the disambiguator.
