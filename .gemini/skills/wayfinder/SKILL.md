@@ -231,9 +231,13 @@ They should run `/wayfinder --remove`. The skill reads its own manifest in `.way
 
 Proceed automatically into the tagging phase (described in "The tagging engine" below). The user does not need to issue a second command.
 
-### Step 8 — Commit
+### Step 8 — Commit (mandatory if any work was done)
 
-Stage `.wayfinder.json`, the editor instruction files, and all tagged source files. Create a single commit:
+**Always commit if `.wayfinder.json` was created or if any source file was modified — including in partial-completion cases.** The commit is what releases the user's working tree from a dirty state, so it must happen even when the run didn't finish all of Phase 2.
+
+Run the completeness check first (see "Phase 2 completeness check" earlier). Based on the result, pick one of two commit messages:
+
+**Full completion** — every siteMap entry was processed (tagged or intentionally skipped):
 
 ```
 chore: set up semantic wayfinder
@@ -241,15 +245,47 @@ chore: set up semantic wayfinder
 - Add .wayfinder.json with site map and manifest
 - Add instruction files for <selected editors>
 - Tag <N> page roots and <M> component roots with identity classes
+- Skipped <S> files (intentional — see report)
 ```
+
+**Partial completion** — siteMap had entries that never got processed:
+
+```
+chore: partial semantic wayfinder setup
+
+- Add .wayfinder.json with site map and manifest
+- Add instruction files for <selected editors>
+- Tag <N> of <T> planned page roots, <M> of <U> planned component roots
+- INCOMPLETE: <P> files remain untagged — see .wayfinder.json siteMap
+  vs tagged for the diff. Re-run /wayfinder to finish.
+```
+
+Stage `.wayfinder.json`, the editor instruction files, and every source file that was actually modified (Phase 2 wrote a class to). The manifest is already current because of the per-file transaction rule — no need to fix it before staging.
+
+**Do not skip the commit.** Even a single tagged file should be committed. Leaving the working tree dirty after Wayfinder ran is a usability failure — the user has no clean way to review and accept the work, and any subsequent run hits the git-cleanliness check and refuses to proceed.
 
 ### Step 9 — Closing message
 
-Tell the user what happened and what to do next:
+Tell the user what happened and what to do next. Format depends on completion state:
 
-> Done. Tagged `N` page roots and `M` component roots. Skipped `S` files (low confidence or unsupported root — see report above).
+**Full completion:**
+
+> Done. Tagged `N` page roots and `M` component roots. Skipped `S` files (intentional — see report above for reasons).
 >
 > From now on, when an AI agent in this project creates new pages or components, it'll add identity classes automatically. When you've made significant changes and want to catch any drift, run `/wayfinder` again — it will only touch what's new or changed and re-check for any newly introduced collisions.
+
+**Partial completion** (the run hit a limit or was interrupted before finishing every file in the siteMap):
+
+> ⚠ Run was incomplete. Tagged `N` of `T` planned pages and `M` of `U` planned components — `P` files still need to be processed.
+>
+> The work I did finish is committed and the manifest is in sync, so the project is in a safe state. To finish the remaining files, just run `/wayfinder` again — incremental mode will tag only the ones still missing from the manifest.
+>
+> Files still pending:
+> - `<file 1>` → would become `<class 1>`
+> - `<file 2>` → would become `<class 2>`
+> - ... [list all pending]
+
+Never end the run silently. The user must always know whether the run was complete or partial, and what to do next.
 
 ---
 
@@ -288,7 +324,11 @@ Same as bootstrap step 4.
 
 Use the same engine as bootstrap. Use the existing config — do not improvise convention.
 
-### Step 6 — Commit
+### Step 6 — Commit (mandatory if any work was done)
+
+Same rule as bootstrap Step 8: always commit if any file was modified, including partial-completion cases. The completeness check runs first; the commit message reflects the result.
+
+**Full completion:**
 
 ```
 chore: wayfind incremental update
@@ -299,7 +339,17 @@ chore: wayfind incremental update
 - Update siteMap and manifest in .wayfinder.json
 ```
 
-Update `lastRunAt` in `.wayfinder.json` and include it in the commit.
+**Partial completion:**
+
+```
+chore: partial wayfind incremental update
+
+- Tag <N> of <T> planned files, <P> remain pending
+- Update siteMap and manifest in .wayfinder.json
+- INCOMPLETE: re-run /wayfinder to finish
+```
+
+Update `lastRunAt` in `.wayfinder.json` and include it in the commit. After the commit, show the same partial-completion closing message used in bootstrap Step 9.
 
 ---
 
@@ -701,6 +751,7 @@ If anything went wrong during the run (parse errors, unreadable files, git probl
 - **Never report success when work is unfinished.** If Phase 2 ends with siteMap entries that have no corresponding manifest entry (and weren't recorded as intentional skips), the closing summary must explicitly tell the user the run is incomplete and that re-running `/wayfinder` will finish the job
 - **Never start Phase 2 without showing the full discovery plan and getting explicit user confirmation.** A bad discovery (missing pages, wrong resolutions) silently produces a bad run; the cheap up-front review prevents it
 - **Never assume page discovery is complete after a shallow scan.** Always recursively walk the route roots (`app/`, `pages/`, `src/routes/`) at every depth. A page at `app/login/page.tsx` is just as important as one at `app/dashboard/settings/billing/page.tsx`
+- **Never leave the user's working tree dirty after the run.** If any source file was modified, the run must end with a commit — even if only a few files were tagged. The commit message reflects whether the run was complete or partial; the commit itself is mandatory either way
 
 ---
 
