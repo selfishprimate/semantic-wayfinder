@@ -507,9 +507,21 @@ For each file in the siteMap, read the source, find the root JSX element, and ad
 
 5. **Skip if a non-conforming Wayfinder-like class exists.** If the className contains something that looks like a Wayfinder class but doesn't match the siteMap (e.g., user hand-tagged something), skip and report for human review. Never overwrite.
 
-6. **Write the class.** Insert the identity class as the **first** entry in the className list. Preserve every other class in order.
+6. **Write the class AND update the manifest as a single transaction.** This is the critical rule that prevents partial-state bugs. For each file you tag, perform BOTH of the following before moving to the next file — never split them, never batch them, never defer them:
 
-7. **Update the manifest.** Append `(file, [class])` to `config.tagged`. The manifest is persisted at the end of the run alongside file changes, in the same commit.
+   a. **Edit the source file** to insert the identity class as the **first** entry in the className list. Preserve every other class in order.
+
+   b. **Edit `.wayfinder.json`** to add the entry to the `tagged` field:
+   ```json
+   "tagged": {
+     "<this/file/path>": ["<class>"]
+   }
+   ```
+   Persist the JSON to disk immediately — do not hold it in memory across files.
+
+   The reason this is enforced per-file rather than batched: if the run is interrupted (token limit, user cancellation, error), the manifest must accurately reflect what was actually tagged. A manifest that says "nothing tagged" while the source files have classes is worse than no manifest at all — `--remove` would silently do nothing and the user would have orphaned classes.
+
+   **Treat the pair as one unit of work.** If you cannot update the manifest after writing the class (e.g., `.wayfinder.json` is locked or unreadable), revert the source file edit and report the error.
 
 ### File modification rules
 
@@ -523,9 +535,11 @@ When writing a semantic class into a file:
 - For Svelte: same as HTML
 - Never reformat surrounding code. Preserve indentation, quotes, line breaks.
 
-### Manifest update
+### Manifest update — the per-file transaction
 
-Every time Wayfinder writes a new identity class into a file, append it to the `tagged` field in `.wayfinder.json`:
+Every time Wayfinder writes a new identity class into a source file, it must immediately write the corresponding entry to `.wayfinder.json`'s `tagged` field as part of the same atomic transaction (see Phase 2 step 6 for the enforcing rule).
+
+Format:
 
 ```json
 "tagged": {
@@ -534,11 +548,26 @@ Every time Wayfinder writes a new identity class into a file, append it to the `
 ```
 
 Rules:
-- File paths are project-root relative, forward-slashed, regardless of OS.
-- Each page file or component file has exactly one entry in `tagged` (one class per file).
-- Never write the same class twice for the same file — if it's already in the manifest, Phase 2 should have skipped the file via the idempotency check.
-- The manifest is persisted at the end of the run alongside the file changes, in the same commit.
-- If a file gets renamed or moved between runs, the incremental run detects the new path, migrates the manifest entry, and updates the siteMap. If the file is deleted, drop both entries.
+- **Per-file persistence.** `.wayfinder.json` is written to disk after every single tagged file — never batched, never deferred to "end of run." If the run is interrupted after tagging 5 files, the manifest must show those 5 files. Partial completion is acceptable; partial-completion-with-empty-manifest is a correctness failure.
+- **File paths are project-root relative**, forward-slashed, regardless of OS.
+- **Each page file or component file has exactly one entry** in `tagged` (one class per file).
+- **Never write the same class twice for the same file** — if it's already in the manifest, Phase 2 should have skipped the file via the idempotency check (step 4).
+- **If a file gets renamed or moved between runs**, the incremental run detects the new path, migrates the manifest entry, and updates the siteMap. If the file is deleted, drop both entries.
+- **Atomic failure.** If the manifest write fails after a source file write succeeded, revert the source file change and report the error. Do not leave the manifest and source files out of sync.
+
+### Phase 2 completeness check — runs at the end of every tagging pass
+
+Immediately before producing the closing summary, compare `config.siteMap` to `config.tagged`:
+
+- **Every entry in `siteMap.pages`** should have a corresponding entry in `tagged` (with the resolved class name as the only value in the array).
+- **Every entry in `siteMap.components`** should have a corresponding entry in `tagged` (same shape).
+- **Exception:** files that were intentionally skipped (Fragment root, custom-component root that doesn't forward `className`, drift, etc.) should be listed separately as "skipped" — they're allowed to be missing from `tagged` but must be reported.
+
+If any siteMap entry is missing from `tagged` AND wasn't recorded as a skip, the run is **incomplete** — not "successfully done." The closing summary must explicitly say:
+
+> "Wayfinder did not tag every file in the siteMap. <N> files were planned but never processed. Re-run /wayfinder to finish — incremental mode will pick up where this run left off."
+
+Never claim success when work is unfinished. The user needs to know.
 
 ### Collision rename (incremental only)
 
@@ -575,11 +604,26 @@ Phase 2 (tagging):
   Skipped (Fragment root): 1 — app/redirect/page.tsx
   Skipped (custom wrapper, unclear): 0
   Already tagged: 0 (first run)
+  Manifest entries written: 31  ← must equal "Newly tagged"
+  Completeness check: ✓ siteMap matches manifest (32 planned − 1 intentional skip = 31 expected = 31 written)
 
 Committed as: chore: set up semantic wayfinder
 ```
 
-If anything went wrong (parse errors, unreadable files, git problems), report it clearly without aborting the entire run — partial progress is better than total failure.
+If the completeness check fails (siteMap has entries that aren't in the manifest and aren't intentional skips), the summary must reframe the run as **incomplete**:
+
+```
+⚠ Run was incomplete. <N> files in the siteMap were never tagged:
+  - components/quick-add.tsx (mapped to quickAdd, never processed)
+  - components/theme-toggle.tsx (mapped to themeToggle, never processed)
+  ... [list all]
+
+These files are still in the siteMap but not in the manifest. Re-run /wayfinder to finish — incremental mode will tag only the missing ones.
+
+Manifest reflects what was actually tagged (<M> entries). Existing tagged files are safe to use; --remove will correctly clean up only those.
+```
+
+If anything went wrong during the run (parse errors, unreadable files, git problems), report it clearly without aborting the entire run — partial progress is better than total failure, and the per-file manifest transaction guarantees the partial state is recoverable.
 
 ---
 
@@ -598,6 +642,8 @@ If anything went wrong (parse errors, unreadable files, git problems), report it
 - Never change `.wayfinder.json` configuration (casing, prefix) during an incremental run — that's what `--reset` is for
 - Never remove a class during `--remove` unless it is recorded in the manifest for that exact file path. Pattern-matching is not a substitute for the manifest
 - Never write to the same `tagged` entry without checking for duplicates
+- **Never defer manifest writes to "end of run."** Each tagged file must be paired with its manifest entry in the same atomic transaction, with `.wayfinder.json` persisted to disk before moving to the next file. A run that gets interrupted mid-tagging must leave a manifest that correctly lists every file that was actually tagged
+- **Never report success when work is unfinished.** If Phase 2 ends with siteMap entries that have no corresponding manifest entry (and weren't recorded as intentional skips), the closing summary must explicitly tell the user the run is incomplete and that re-running `/wayfinder` will finish the job
 
 ---
 
