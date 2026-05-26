@@ -139,17 +139,37 @@ If two components are equally "global" (e.g., both at the top of `components/` w
 
 ### Fragment root edge case
 
-**Decision:** Skip with report. Never auto-wrap.
+**Initial decision (v0.1.2):** Skip with report. Never auto-wrap.
 
-A page file that returns `<>...</>` has no DOM element to receive a class. Three options were considered:
+**Revised decision (v0.2.0):** Skip *only when no semantic native child exists*. If the Fragment contains a single semantic element (`<main>`, `<article>`, `<section>`), tag that instead.
 
-- Skip and report
-- Auto-wrap in `<div>` (or `<main>`)
-- Tag the first child instead
+The original "always skip" rule didn't survive the first real-world Wayfinder run (Plainify project). Every Next.js page in the test followed the same pattern: `<><Header /><main>…</main><Footer /></>`. Skipping all of them would have meant tagging only 3 of 10 pages. The agent intuitively did the right thing during the run by tagging the inner `<main>`, and the user confirmed it was correct.
 
-Auto-wrap was rejected because it's a structural code change — Wayfinder writes JSX, not classNames. Tag-the-first-child was rejected because that child is meaningfully different from the page root (often a `<section>` with its own identity). Skip-and-report keeps Wayfinder honest: the user is told why the page wasn't tagged and what to do.
+The v0.2.0 rule formalizes that intuition:
 
-A future rule in the editor instruction template will tell agents generating new pages to use a wrapping element, reducing this case to near-zero.
+- One semantic native element among Fragment children (`<main>`, `<article>`, `<section>`) → tag it. High confidence.
+- One non-semantic native element (`<div>`) with the rest being custom components → tag it. Medium confidence — flag for review.
+- Multiple native siblings, no unique semantic candidate → ask the user which to tag.
+- No native elements at all → skip with report (the original behavior preserved).
+
+Auto-wrap was still rejected — Wayfinder doesn't add structural JSX. The Fragment children rule is purely about *picking* an existing element, not creating one.
+
+### Custom-component wrappers that don't forward className (v0.2.0)
+
+**Decision:** Offer to modify the wrapper to add className forwarding, with explicit user confirmation. Record the modification in `wrapperMods` so `--remove` can revert.
+
+The Plainify test surfaced this case: auth pages used `<AuthShell>` as their root, and AuthShell didn't accept a `className` prop. Under the strict v0.1.x rule (skip if not forwarded), all 3 auth pages would have been left untagged — a meaningful coverage hole.
+
+The agent during the test went further than the spec: it added a `className?: string` prop to AuthShell, spliced it into the root `<div>`'s className expression, and tagged the call sites normally. The user approved this behavior, and the v0.2.0 spec formalizes it.
+
+Three options the user can pick per encounter:
+1. **Modify the wrapper** (default offer) — small, well-bounded structural change; the prop is harmless if unused; reversible via `--remove`.
+2. **Wrap call sites with a `<div className="...">`** — keeps the wrapper untouched but adds an extra DOM element at every use.
+3. **Skip the affected pages** — no tagging, no changes.
+
+Why default to option 1: the wrapper modification is one-time, the prop becomes part of the component's interface for future use too, and `--remove` can undo it cleanly. Option 2 (wrap call sites) is sometimes the right call when the wrapper is third-party code or has a complex root that makes forwarding risky.
+
+This is the first "structural code modification" Wayfinder is allowed to make. The spec carefully limits it: only when (a) the user explicitly confirms with a visible diff, (b) the wrapper's structure is simple enough for the agent to make a safe change, and (c) the modification is recorded for revert. Anything more invasive (refactoring component types, dealing with HOCs, classNames libraries with complex inputs) is still out of scope — skip with report.
 
 ---
 

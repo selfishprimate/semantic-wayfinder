@@ -9,6 +9,25 @@ While the project is in `0.x`, breaking grammar changes may land in MINOR bumps.
 
 ---
 
+## [0.2.0] — 2026-05-26
+
+Two behavior expansions driven by the second Plainify test run, both surfacing real-world patterns that v0.1.x handled poorly.
+
+### Added
+- **Fragment-with-tagable-child rule.** When a page's root is a Fragment (`<>...</>`), Wayfinder inspects the children and tags the first semantic native element (`<main>`, `<article>`, `<section>`) instead of skipping the page. This is the standard Next.js pattern (`<><Header /><main>…</main><Footer /></>`) — the v0.1.x skip-all-Fragments rule would have left it untagged. Multiple semantic siblings still trigger a user prompt; Fragments with only custom-component children still skip.
+- **Custom-component wrapper className injection.** When a page's root is a custom component that doesn't forward `className`, Wayfinder offers three options: (1) modify the wrapper to add forwarding, (2) wrap the call site in a `<div className="...">`, or (3) skip the page. Default offer is (1). The wrapper modification is recorded in a new `wrapperMods` field of `.wayfinder.json` so `--remove` can offer to revert it. This is the first structural code change Wayfinder is allowed to make, gated by explicit user confirmation showing the diff.
+- **`wrapperMods` field** in `.wayfinder.json` schema. Tracks structural modifications made to wrapper components. Used by `--remove` to offer cleanup of those changes.
+- **`--remove` step 3b** — after stripping classes, offer to revert wrapper modifications. Three sub-options: revert all, leave them, or review each diff.
+
+### Changed
+- `.wayfinder.json` schema bumped to `0.2.0`. Old configs at `0.1.x` are forward-compatible (Wayfinder treats missing `wrapperMods` as an empty object).
+- Output summary now reports "Wrapper modifications" and "Fragment accommodations" as separate lines so the user sees what non-class-only changes happened.
+
+### Why these aren't breaking
+Existing `v0.1.x`-tagged projects continue to work — none of these rules invalidate previously written classes. Re-running `/wayfinder` on a `v0.1.x`-tagged project will discover new opportunities (Fragment pages, custom-wrapper pages) that were previously skipped, and will add them via the new rules. The manifest format gains a field but doesn't change existing fields.
+
+---
+
 ## [0.1.2] — 2026-05-26
 
 Reactive hardening driven by the first real-world Wayfinder run (Plainify project, May 26). Four behavior fixes that surfaced when the spec met an actual codebase: a bare `header` class drowned in `grep` noise, an empty manifest after a partial run, missed auth pages, and a dirty working tree with no commit.
@@ -77,7 +96,8 @@ Initial release. Skill specification and surrounding documentation; the original
 
 ---
 
-[Unreleased]: https://github.com/selfishprimate/semantic-wayfinder/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/selfishprimate/semantic-wayfinder/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.2.0
 [0.1.2]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.1.2
 [0.1.1]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.1.1
 [0.1.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.1.0

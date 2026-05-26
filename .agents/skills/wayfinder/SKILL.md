@@ -1,7 +1,7 @@
 ---
 name: wayfinder
 description: Tags page roots and component roots in your codebase with semantic identity classes so AI agents can target them precisely instead of guessing. Reduces token burn and back-and-forth on edit requests. Runs on first invocation to set up the project; subsequent invocations only touch new or changed files.
-version: 0.1.2
+version: 0.1.3
 license: MIT
 homepage: https://github.com/selfishprimate/semantic-wayfinder
 ---
@@ -87,7 +87,7 @@ Create `.wayfinder.json` in the project root:
 
 ```json
 {
-  "version": "0.1.1",
+  "version": "0.2.0",
   "casing": "camelCase | kebab-case",
   "prefix": "wf | custom-string | null",
   "editors": ["claude-code", "gemini-cli", "codex-cli"],
@@ -97,17 +97,35 @@ Create `.wayfinder.json` in the project root:
     "pages": {},
     "components": {}
   },
-  "tagged": {}
+  "tagged": {},
+  "wrapperMods": {}
 }
 ```
 
 This file is the source of truth for every subsequent run. Do not gitignore it — it should be committed so collaborators inherit the same conventions.
 
-Two structural fields:
+Three structural fields:
 
 - **`siteMap`** captures the result of Phase 1 (structural analysis). `pages` maps each page file path to its resolved class name. `components` maps each component file path to its resolved class name (after collision resolution). This is what Phase 2 reads to know what to write.
 
-- **`tagged`** is the manifest — a record of every identity class Wayfinder has written, keyed by file path. `--remove` reads from it; pattern matching alone would risk deleting user-authored classes. Both fields start empty during Step 5 and are populated during Step 7.
+- **`tagged`** is the manifest — a record of every identity class Wayfinder has written, keyed by file path. `--remove` reads from it; pattern matching alone would risk deleting user-authored classes.
+
+- **`wrapperMods`** records structural changes Wayfinder made to custom-component wrappers to enable className forwarding. Used by `--remove` to offer to revert those structural edits. Empty for most projects.
+
+  Schema:
+  ```json
+  "wrapperMods": {
+    "<wrapper-file-path>": {
+      "type": "added-className-prop",
+      "rootElementTag": "div",
+      "modifiedAt": "ISO-8601 timestamp"
+    }
+  }
+  ```
+
+  For a wrapper file like `components/auth-shell.tsx` that Wayfinder modified to add a `className` prop and forward it to the root `<div>`, this entry tells `--remove` what to undo. The `rootElementTag` helps locate the right element when reverting (in case the file has been edited since).
+
+All three fields start empty during Step 5 and are populated during Step 7 (tagged) or as needed (wrapperMods).
 
 ### Step 6 — Write instruction files
 
@@ -389,6 +407,33 @@ For each `(file, classes[])` entry in `config.tagged`:
 
 If the className list ends up empty (`className=""`), preserve the empty attribute — don't delete the attribute itself.
 
+### Step 3b — Offer to revert wrapper modifications
+
+If `config.wrapperMods` has any entries, ask the user whether to revert them. These are structural changes Wayfinder made to custom-component wrappers to enable className forwarding — they're more invasive than class removals, so the user gets a separate decision.
+
+```
+I also added className forwarding to these wrappers when I set up:
+  - components/auth-shell.tsx  (added className prop, splice into root <div>)
+
+Do you want me to revert those structural edits too?
+
+1) Yes — undo wrapper modifications (your wrappers go back to not accepting className)
+2) No — leave wrapper modifications in place (they're harmless if no caller passes className)
+3) Show me each diff first
+```
+
+If the user picks (1):
+- For each entry in `wrapperMods`:
+  - Open the wrapper file
+  - Locate the `className?: string` prop addition and remove it from the props type
+  - Locate the root element identified by `rootElementTag` and remove the className splice (restore the original className expression)
+- Each revert writes back to the file and removes the entry from `wrapperMods`
+- If a wrapper has drifted (the file was edited beyond Wayfinder's modification), skip and report — don't guess
+
+If the user picks (2): leave wrappers untouched. The added className prop is harmless when no caller uses it. Wrapper mods stay in `.wayfinder.json` (and in code) but the manifest classes are already gone, so Wayfinder is functionally uninstalled.
+
+Picking (3) shows the diff for each wrapper one at a time and asks per-file.
+
 ### Step 4 — Clean up config and instruction files (if "full removal" was chosen)
 
 - Delete `.wayfinder.json`.
@@ -604,9 +649,32 @@ For each file in the siteMap, read the source, find the root JSX element, and ad
    - Class component: find the `render()` method's outermost return element.
 
 3. **Classify the root element type:**
-   - **Native HTML element** (`<main>`, `<div>`, `<section>`, `<header>`, `<article>`, `<aside>`, `<nav>`, `<footer>`, etc.): proceed to write the class.
-   - **Fragment** (`<>` or `<React.Fragment>`): skip with a clear report. Fragments have no DOM element to receive a class. Suggest the user add a wrapping element.
-   - **Custom component** (`<PageWrapper>`, etc.): inspect the wrapper's definition if accessible. If it forwards `className`, write the class and flag as medium-confidence for user review. If it doesn't forward, or Wayfinder can't determine, skip with a report.
+
+   - **Native HTML element** (`<main>`, `<div>`, `<section>`, `<header>`, `<article>`, `<aside>`, `<nav>`, `<footer>`, etc.): proceed to write the class. High confidence.
+
+   - **Fragment** (`<>` or `<React.Fragment>`): inspect the Fragment's direct children. Apply this priority order to find a tagable target:
+     1. If exactly one **semantic native element** is among the children (`<main>`, `<article>`, `<section>`), tag it. This is the common Next.js pattern: `<><Header /><main>…</main><Footer /></>`. The `<main>` is the unmistakable page body. **High confidence — proceed.**
+     2. If exactly one **other native element** (e.g. `<div>`) is among the children with the rest being custom components, tag the native element. **Medium confidence — flag for review.**
+     3. If multiple native elements are siblings (e.g. `<><div>...</div><main>...</main><div>...</div></>`) and none is uniquely semantic, ask the user which to tag.
+     4. If no native elements at all (Fragment of only custom components), skip with a report. Suggest adding a wrapping element.
+
+     Rationale: Fragment-rooted pages are extremely common (every Next.js page that wants Header + main + Footer without an extra wrapping `<div>` uses this pattern). Skipping all of them would leave most projects largely untagged. The "semantic native element" heuristic catches the intended page body without ambiguity.
+
+   - **Custom component** (`<PageWrapper>`, `<AuthShell>`, etc.): inspect the wrapper's definition if the file is accessible.
+
+     **If it already forwards `className`** (the prop exists in the component's props and is applied to the rendered root element): write the class. The forwarded class will appear on the actual DOM root alongside the component's own internal classes. High confidence.
+
+     **If it does NOT forward `className`**, the class added at the call site would be silently dropped at runtime. You have three options to surface to the user — ask which one to apply:
+
+     1. **Modify the wrapper to forward `className`** (recommended for tagability). Add `className?: string` to the component's prop interface, and splice `className` into the root element's class expression. This is a controlled structural edit — the change is small and reversible. Wayfinder records this in `.wayfinder.json` under `wrapperMods` so `--remove` can offer to revert. After modifying, tag the call sites normally.
+
+     2. **Wrap the call site in a `<div className="...">`** instead of modifying the wrapper. Less invasive on the wrapper file but adds an extra DOM element at each call site. Wayfinder records the wrapping divs in the manifest so `--remove` can strip them.
+
+     3. **Skip this page** (no tagging). Wayfinder reports the page as unsupported-root and moves on.
+
+     **Default offer is option 1** — modifying the wrapper once is cleaner than wrapping at every call site. Always show the diff before applying (the proposed prop addition and the className splice). Get explicit user confirmation before the modification is written to disk.
+
+     **Never silently modify a wrapper.** The "additive only" promise is bent in this case, but only with user knowledge and explicit consent. The modification is recorded for later revert.
 
 4. **Skip if already tagged.** If the root element's className list already contains a class matching the convention (and matching the siteMap entry), do nothing — idempotent.
 
@@ -627,6 +695,8 @@ For each file in the siteMap, read the source, find the root JSX element, and ad
    The reason this is enforced per-file rather than batched: if the run is interrupted (token limit, user cancellation, error), the manifest must accurately reflect what was actually tagged. A manifest that says "nothing tagged" while the source files have classes is worse than no manifest at all — `--remove` would silently do nothing and the user would have orphaned classes.
 
    **Treat the pair as one unit of work.** If you cannot update the manifest after writing the class (e.g., `.wayfinder.json` is locked or unreadable), revert the source file edit and report the error.
+
+   **For wrapper modifications** (from step 3 custom-component option 1): the transaction is a triple. (a) Modify the wrapper file to add `className` forwarding, (b) record the modification in `.wayfinder.json` `wrapperMods`, (c) only then start tagging the call sites that depend on the wrapper. The wrapper modification must persist to `.wayfinder.json` before any call site is tagged, so `--remove` can revert correctly even if the run is interrupted between the wrapper edit and the call site edits.
 
 ### File modification rules
 
@@ -706,8 +776,10 @@ Phase 1 (analysis):
 
 Phase 2 (tagging):
   Newly tagged: 31 (all roots — 8 pages + 23 components)
-  Skipped (Fragment root): 1 — app/redirect/page.tsx
-  Skipped (custom wrapper, unclear): 0
+  Wrapper modifications: 1 (components/auth-shell.tsx — added className forwarding, user-approved)
+  Fragment accommodations: 7 (pages with Fragment roots — tagged inner <main>)
+  Skipped (Fragment with no semantic child): 1 — app/redirect/page.tsx
+  Skipped (custom wrapper, user declined modification): 0
   Already tagged: 0 (first run)
   Manifest entries written: 31  ← must equal "Newly tagged"
   Completeness check: ✓ siteMap matches manifest (32 planned − 1 intentional skip = 31 expected = 31 written)
@@ -740,7 +812,9 @@ If anything went wrong during the run (parse errors, unreadable files, git probl
 - Never produce a bare reserved-word class (`header`, `footer`, `nav`, `sidebar`, `card`, `button`, etc.) when the source filename is bare. The reserved-words list applies even without a real component collision — bare reserved words are too ambient under `grep` to be useful identity classes
 - Never echo a filename's PascalCase as the class name. Casing always follows `.wayfinder.json` — `MarketingHeader.tsx` becomes `marketingHeader` (camelCase) or `marketing-header` (kebab-case), never `MarketingHeader`
 - Never tag inline sections inside page files, layout files, generated files, build outputs, test files, or gitignored paths
-- Never wrap a Fragment-rooted page in a `<div>` to make it taggable — report and let the user decide
+- Never wrap a Fragment-rooted page in a `<div>` to make it taggable. For Fragments, follow the priority rules in Phase 2 step 3 — tag a single semantic child if present, otherwise ask
+- **Never modify a custom-component wrapper silently.** Wrapper modifications (adding `className` forwarding) require explicit user confirmation with a visible diff, and must be recorded in `wrapperMods` so `--remove` can offer to revert them
+- **Never tag call sites of a non-forwarding wrapper before the wrapper modification has been persisted to `.wayfinder.json`.** The wrapper change must land in the manifest first, otherwise an interrupted run leaves classes hanging on call sites that the wrapper silently ignores
 - Never delete utility classes or change styling — Semantic Wayfinder is additive only
 - Never invent new naming conventions mid-run; always use `.wayfinder.json`
 - Never silently skip files due to parse errors — always report them in the summary

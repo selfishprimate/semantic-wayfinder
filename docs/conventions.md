@@ -135,11 +135,22 @@ Wayfinder makes no attempt to distinguish them via name. Two `<ContactForm />` e
 
 A page file might return:
 
-- A native element (`<main>`, `<div>`, `<section>`): **Tag it.** This is the common case.
-- A Fragment (`<>...</>`): **Skip with a report.** Fragments have no DOM element to receive a class. Wayfinder warns the user and suggests adding a wrapping element.
-- A custom component (`<PageWrapper>...</PageWrapper>`): **Inspect the wrapper.** If it forwards `className`, Wayfinder writes the page class and flags it as medium-confidence for review. If it doesn't forward (or Wayfinder can't tell), skip with a report.
+- **A native element** (`<main>`, `<div>`, `<section>`, etc.): tag it. The common case.
 
-Wayfinder will never wrap your JSX in a `<div>` for you. That would cross the "additive only" line.
+- **A Fragment** (`<>...</>`): Wayfinder inspects the Fragment's children and applies priority:
+  - One semantic native element among the children (`<main>`, `<article>`, `<section>`) → tag it. This is the typical Next.js `<><Header /><main>...</main><Footer /></>` pattern.
+  - One other native element (e.g. `<div>`) among custom-component siblings → tag with medium confidence.
+  - Multiple native siblings with no unique semantic candidate → ask the user.
+  - No native elements at all → skip with a report.
+
+- **A custom component** (`<PageWrapper>`, `<AuthShell>`, etc.): Wayfinder inspects the wrapper.
+  - If the wrapper forwards `className` → tag normally. The class lands on the wrapper's actual DOM root.
+  - If the wrapper doesn't forward `className` → offer three options to the user:
+    1. **Modify the wrapper** to add className forwarding (default offer — small structural edit, recorded in `wrapperMods` for `--remove` to revert).
+    2. **Wrap the call sites** with a `<div className="...">` instead.
+    3. **Skip the affected pages.**
+
+Wayfinder will never wrap your JSX in a `<div>` silently or modify a wrapper without an explicit user confirmation showing the proposed diff.
 
 ## Forbidden patterns
 
