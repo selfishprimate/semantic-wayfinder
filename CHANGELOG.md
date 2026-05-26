@@ -9,6 +9,22 @@ While the project is in `0.x`, breaking grammar changes may land in MINOR bumps.
 
 ---
 
+## [0.4.0] — 2026-05-27
+
+### Changed
+- **Phase 1 discovery report no longer requires a "go" reply.** Earlier versions treated the discovery report as a hard checkpoint — Phase 2 wouldn't start until the user typed "go" or equivalent. This added friction on every clean run for no real safety gain (the user already opted in by invoking `/wayfinder`). The new behavior: always show the discovery report for transparency, but auto-continue to Phase 2 unless a decision is genuinely needed.
+- **Decisions that still pause the run:**
+  - Custom-component wrapper that doesn't forward `className` (3-option choice: modify wrapper / wrap call sites / skip)
+  - Multiple semantic native siblings in a Fragment root (which to tag?)
+  - Tie-breaker collisions — two bare filenames sharing a role (e.g. `Header.tsx` AND `Heading.tsx`)
+  - Incremental-run rename plans (when a new component introduces a collision that renames an existing class)
+- These prompts are surfaced inline as specific questions, not as a generic "reply go". A clean plan flows continuously: discovery report → Phase 2 tagging → commit → closing message.
+
+### Why
+The "go" gate was added in v0.1.2 as a reaction to a Plainify test bug where Phase 1 missed 3 of 10 pages. The deeper fix — exhaustive recursive discovery — was added in the same release and made the gate redundant for most projects. The gate stayed in place out of caution, but in practice it added friction every run while catching real problems rarely. v0.4.0 trades the unconditional checkpoint for targeted decision prompts.
+
+---
+
 ## [0.3.0] — 2026-05-26
 
 ### Removed
@@ -109,7 +125,8 @@ Initial release. Skill specification and surrounding documentation; the original
 
 ---
 
-[Unreleased]: https://github.com/selfishprimate/semantic-wayfinder/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/selfishprimate/semantic-wayfinder/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.4.0
 [0.3.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.3.0
 [0.2.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.2.0
 [0.1.2]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.1.2

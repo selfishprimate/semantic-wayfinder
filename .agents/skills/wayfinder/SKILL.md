@@ -1,7 +1,7 @@
 ---
 name: wayfinder
 description: Tags page roots and component roots in your codebase with semantic identity classes so AI agents can target them precisely instead of guessing. Reduces token burn and back-and-forth on edit requests. Runs on first invocation to set up the project; subsequent invocations only touch new or changed files.
-version: 0.3.0
+version: 0.4.0
 license: MIT
 homepage: https://github.com/selfishprimate/semantic-wayfinder
 ---
@@ -597,10 +597,21 @@ For each component, apply this decision tree:
 
 The siteMap is consulted during Phase 2 (no re-derivation) and persisted to `.wayfinder.json` for later runs.
 
-**7. Report the discovery plan to the user.** Before Phase 2 starts writing anything, show the full siteMap so the user can spot missing files or wrong resolutions. This is a hard checkpoint — Phase 2 may not begin until the user confirms.
+**7. Report the discovery plan and auto-continue (unless decisions are pending).**
+
+Always show the full discovery report so the user sees what's about to happen. The user already opted in by invoking `/wayfinder`; **no extra "go" gate** is needed for clean plans. Phase 2 starts immediately afterward.
+
+The only thing that pauses the run is a **pending decision** — a case where Wayfinder genuinely needs user input. List of decisions that pause:
+
+- **Custom-component wrapper that doesn't forward className** (3-option choice — modify wrapper / wrap call sites / skip)
+- **Multiple semantic native siblings in a Fragment root** (which one to tag?)
+- **Tie-breaker collisions** (two bare filenames with the same role, e.g. `Header.tsx` AND `Heading.tsx` — which is `mainHeader`?)
+- **Incremental-run rename plan** (existing class needs renaming due to a new collision — confirm before rewriting)
+
+If none of those apply, the run flows continuously: discovery report → Phase 2 tagging → commit → closing message.
 
 ```
-[wayfinder] Discovery complete. Here's what I'll tag:
+[wayfinder] Discovery complete:
 
 PAGES (10 found):
   app/page.tsx                          → homePage
@@ -630,11 +641,28 @@ SKIPPED (framework conventions, out of scope):
   app/loading.tsx                       (Next.js loading UI)
   app/not-found.tsx                     (Next.js 404 page)
 
-Look this over. If anything's missing or named wrong, tell me now —
-I'll re-scan or accept overrides. Otherwise reply "go" and I'll start tagging.
+Plan is clean — no decisions needed. Starting Phase 2.
 ```
 
-The user's confirmation is required before Phase 2. If they spot a missing file (e.g., "you missed `app/dashboard/page.tsx`"), re-run Phase 1 discovery focusing on that subtree. Do not start writing classes with an incomplete plan — the cost of a bad run is non-trivial (uncommitted changes, manifest drift), so the up-front check is worth it.
+When a decision IS pending, surface only that decision (not a generic "reply go"). For example:
+
+```
+[wayfinder] Discovery complete: 10 pages, 14 components. [report above]
+
+⚠ One decision before I tag:
+  components/auth-shell.tsx is the root of 3 pages (login, signup, forgot-password) but doesn't forward `className`.
+
+  How should I handle this?
+  1) Modify the wrapper to add className forwarding (recommended — small diff, reversible via --remove)
+  2) Wrap each call site in <div className="...">
+  3) Skip those 3 pages
+
+  Pick 1 / 2 / 3:
+```
+
+After the user answers, Phase 2 proceeds. Don't ask the same question twice; remember the choice for the rest of the run.
+
+If a missing file is spotted *after the discovery report scrolls by* (rare with exhaustive recursive discovery, but possible), the user can interrupt with Ctrl+C, fix the situation (e.g. move the file to a recognized location, or add the right filename), and re-run `/wayfinder`. The cost is one extra run, not a corrupted state — the per-file atomic manifest makes interruption recoverable.
 
 ### Phase 2 — Apply tags
 
@@ -824,7 +852,7 @@ If anything went wrong during the run (parse errors, unreadable files, git probl
 - Never write to the same `tagged` entry without checking for duplicates
 - **Never defer manifest writes to "end of run."** Each tagged file must be paired with its manifest entry in the same atomic transaction, with `.wayfinder.json` persisted to disk before moving to the next file. A run that gets interrupted mid-tagging must leave a manifest that correctly lists every file that was actually tagged
 - **Never report success when work is unfinished.** If Phase 2 ends with siteMap entries that have no corresponding manifest entry (and weren't recorded as intentional skips), the closing summary must explicitly tell the user the run is incomplete and that re-running `/wayfinder` will finish the job
-- **Never start Phase 2 without showing the full discovery plan and getting explicit user confirmation.** A bad discovery (missing pages, wrong resolutions) silently produces a bad run; the cheap up-front review prevents it
+- **Never start Phase 2 with unresolved decisions.** Always show the full discovery plan for transparency, but pause for input only when something genuinely needs deciding (custom-component wrapper choice, multiple Fragment siblings, tie-breaker collisions, incremental-run rename plans). Clean plans auto-continue — the user already opted in by invoking `/wayfinder`
 - **Never assume page discovery is complete after a shallow scan.** Always recursively walk the route roots (`app/`, `pages/`, `src/routes/`) at every depth. A page at `app/login/page.tsx` is just as important as one at `app/dashboard/settings/billing/page.tsx`
 - **Never leave the user's working tree dirty after the run.** If any source file was modified, the run must end with a commit — even if only a few files were tagged. The commit message reflects whether the run was complete or partial; the commit itself is mandatory either way
 
