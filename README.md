@@ -1,10 +1,10 @@
 # Semantic Wayfinder
 
-> Give your components an identity layer so AI agents stop guessing.
+> Give your pages and components an identity layer so AI agents stop guessing.
 
-When you ask an AI agent to "change the testimonials section on the about page," it often edits the wrong section. The reason isn't the AI — it's that utility-class codebases give every component the same outfit and no name tag. The agent has to play detective on every request, and detective work burns tokens.
+When you ask an AI agent to "update the contact form" or "edit the about page," it often edits the wrong file. The reason isn't the AI — it's that utility-class codebases give every element the same outfit and no name tag. The agent has to play detective on every request, and detective work burns tokens.
 
-Semantic Wayfinder adds a single semantic identity class to each component (`aboutHero`, `dashboardSidebar`, `pricingFAQ`...) so agents can `grep` and target precisely instead of reading entire files trying to figure out which `<section>` you meant.
+Semantic Wayfinder adds one identity class to each **page root** (`aboutPage`, `homePage`, `dashboardSettingsPage`...) and one to each **component root** (`contactForm`, `mainHeader`, `docsSidebar`...) so agents can `grep` and target precisely.
 
 ## Why this exists
 
@@ -12,7 +12,7 @@ Read the full argument here: **[Semantic Wayfinding: Why Vibe Coding Needs More 
 
 The short version, in numbers from the article:
 
-- A typical "update the testimonials section on the about page" edit, in a utility-only codebase, takes an agent **~1,300 tokens** to complete (multiple file reads, ambiguity, clarification turns).
+- A typical "update the contact form" edit, in a utility-only codebase, takes an agent **~1,300 tokens** to complete (multiple file reads, ambiguity, clarification turns).
 - The same edit, in a Wayfinder-tagged codebase, takes **~190 tokens**. One `grep`, one edit.
 - Roughly **6.9× cheaper, 85% saving** — see the article for the methodology and a transparency note on how the measurements were modeled.
 
@@ -22,9 +22,9 @@ Semantic Wayfinder ships as an **Agent Skill** for three editors that share the 
 
 | Path | Editor | Status |
 |---|---|---|
-| `.claude/skills/wayfinder/` | Claude Code | ✅ v0.1 |
-| `.agents/skills/wayfinder/` | Codex CLI, Aider, and other Agent-Skills-compatible agents | ✅ v0.1 |
-| `.gemini/skills/wayfinder/` | Gemini CLI | ✅ v0.1 |
+| `.claude/skills/wayfinder/` | Claude Code | ✅ v0.1.1 |
+| `.agents/skills/wayfinder/` | Codex CLI, Aider, and other Agent-Skills-compatible agents | ✅ v0.1.1 |
+| `.gemini/skills/wayfinder/` | Gemini CLI | ✅ v0.1.1 |
 | `cli/` | `npx semantic-wayfinder` for any environment | 🚧 v0.3 |
 
 The three `SKILL.md` files are kept in sync by `scripts/sync-skills.sh`. The `.claude/` copy is the source of truth.
@@ -72,15 +72,22 @@ If you don't use any of those three editors yet, the CLI is on the way — see [
 
 ## How it works
 
+Wayfinder tags exactly two things — and nothing else:
+
+1. **The root element of every page file** gets a `{page}Page` class. `app/about/page.tsx` → `aboutPage`. `app/page.tsx` → `homePage`. `app/dashboard/settings/page.tsx` → `dashboardSettingsPage`.
+2. **The root element of every component file** gets the component's identity name. `components/ContactForm.tsx` → `contactForm`. `components/TableOfContents.tsx` → `tableOfContents`. `components/DocsSidebar.tsx` → `docsSidebar`.
+
+Inline sections inside page files, layout files, generated files, and tests are all skipped. If you want something greppable, make it a component file.
+
 `/wayfinder` runs in one of three modes, auto-detected (except `--remove`, which is explicit):
 
 | Run | What happens |
 |---|---|
-| **First run** (no `.wayfinder.json` in project) | Bootstrap: asks about casing / prefix / scope, writes rule files for the agents you use (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`), tags your entire codebase, commits. |
-| **Every later run** | Incremental: reads your existing config, finds new or changed files since last run, tags only those. No questions, no surprises. |
+| **First run** (no `.wayfinder.json`) | Bootstrap: asks about casing and (optional) prefix, writes rule files for the agents you use (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`), analyzes the project structure (Phase 1), tags every page root and component root (Phase 2), commits. |
+| **Every later run** | Incremental: reads your existing config, finds new or changed files since last run, tags only those. Re-checks for newly introduced collisions and asks before renaming. |
 | **`/wayfinder --remove`** | Strips every identity class Wayfinder added (per its manifest in `.wayfinder.json`), optionally deletes the config and instruction blocks. Utility classes and any semantic classes you wrote by hand are left untouched. |
 
-Pass `--reset` if you ever want to start the wizard over.
+Pass `--reset` to start the wizard over.
 
 > **Note — two different file types, easy to confuse:**
 >
@@ -91,24 +98,44 @@ Pass `--reset` if you ever want to start the wizard over.
 
 ## Naming conventions
 
-You pick three things during bootstrap, and Wayfinder stays consistent forever after:
+You pick two things during bootstrap; Wayfinder stays consistent forever after.
 
 | Choice | Options | Example |
 |---|---|---|
-| **Casing** | `camelCase` or `kebab-case` | `aboutHero` vs `about-hero` |
-| **Prefix** | none (default) / `wf` / custom | `aboutHero` vs `wfAboutHero` (camel) or `wf-about-hero` (kebab) — prefix style follows casing, never mixes |
-| **Scope** | page-level sections only (default) / all meaningful components | `<section>` only vs sections + cards + banners |
+| **Casing** | `camelCase` (default) or `kebab-case` | `aboutPage` vs `about-page`; `contactForm` vs `contact-form` |
+| **Optional prefix** | none (default) / `wf` / custom | `aboutPage` vs `wfAboutPage` (camel) or `wf-about-page` (kebab) |
 
-The config lives in `.wayfinder.json` at your project root. Commit it — your collaborators should inherit the same conventions. See [`docs/conventions.md`](./docs/conventions.md) for the full naming pattern reference.
+That's it. There used to be a third "scope" question in early drafts; it's gone. Wayfinder always tags page roots and component roots — the rule is fixed, no choice needed.
+
+**Collision handling.** When two components share a role (e.g., both `Header.tsx` and `AdminHeader.tsx`), Wayfinder adds disambiguation prefixes during Phase 1: the most global one becomes `mainHeader`, the specialized one becomes `adminHeader`. If only one component has that role in your project, no prefix is added — it's just `header`.
+
+The config lives in `.wayfinder.json` at your project root. Commit it — your collaborators should inherit the same conventions. See [`docs/conventions.md`](./docs/conventions.md) for the full grammar reference.
 
 ## Examples
 
-See [`examples/`](./examples) for a before/after on an About page, plus a sample `.wayfinder.json`.
+See [`examples/`](./examples) for a before/after, plus a sample `.wayfinder.json`.
 
-**Before** → utility-only `<section className="px-6 py-20 bg-neutral-50">`
-**After** → identity-tagged `<section className="aboutTestimonials px-6 py-20 bg-neutral-50">`
+**Before** → utility-only:
+```jsx
+// components/ContactForm.tsx
+export default function ContactForm() {
+  return (
+    <form className="px-6 py-20 bg-neutral-50">...</form>
+  )
+}
+```
 
-Same styling, same behavior. Now `grep aboutTestimonials` gives one hit, an agent finds it instantly, and you stop spending tokens on detective work.
+**After** → identity-tagged:
+```jsx
+// components/ContactForm.tsx
+export default function ContactForm() {
+  return (
+    <form className="contactForm px-6 py-20 bg-neutral-50">...</form>
+  )
+}
+```
+
+Same styling, same behavior. Now `grep contactForm` lands directly on this component definition — across any page that uses it.
 
 ## What it never does
 

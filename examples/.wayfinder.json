@@ -1,9 +1,34 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "casing": "camelCase",
   "prefix": null,
-  "scope": "sections",
   "editors": ["claude-code"],
-  "createdAt": "2026-05-25T00:00:00.000Z",
-  "lastRunAt": "2026-05-25T00:00:00.000Z"
+  "createdAt": "2026-05-26T00:00:00.000Z",
+  "lastRunAt": "2026-05-26T00:00:00.000Z",
+  "siteMap": {
+    "pages": {
+      "app/page.tsx": "homePage",
+      "app/about/page.tsx": "aboutPage",
+      "app/pricing/page.tsx": "pricingPage"
+    },
+    "components": {
+      "components/Header.tsx": "mainHeader",
+      "components/AdminHeader.tsx": "adminHeader",
+      "components/Footer.tsx": "footer",
+      "components/ContactForm.tsx": "contactForm",
+      "components/TableOfContents.tsx": "tableOfContents",
+      "components/DocsSidebar.tsx": "docsSidebar"
+    }
+  },
+  "tagged": {
+    "app/page.tsx": ["homePage"],
+    "app/about/page.tsx": ["aboutPage"],
+    "app/pricing/page.tsx": ["pricingPage"],
+    "components/Header.tsx": ["mainHeader"],
+    "components/AdminHeader.tsx": ["adminHeader"],
+    "components/Footer.tsx": ["footer"],
+    "components/ContactForm.tsx": ["contactForm"],
+    "components/TableOfContents.tsx": ["tableOfContents"],
+    "components/DocsSidebar.tsx": ["docsSidebar"]
+  }
 }

@@ -1,14 +1,14 @@
 ---
 name: wayfinder
-description: Tags components in your codebase with semantic identity classes so AI agents can target them precisely instead of guessing. Reduces token burn and back-and-forth on edit requests. Runs on first invocation to set up the project; subsequent invocations only touch new or changed files.
-version: 0.1.0
+description: Tags page roots and component roots in your codebase with semantic identity classes so AI agents can target them precisely instead of guessing. Reduces token burn and back-and-forth on edit requests. Runs on first invocation to set up the project; subsequent invocations only touch new or changed files.
+version: 0.1.1
 license: MIT
 homepage: https://github.com/selfishprimate/semantic-wayfinder
 ---
 
 # Semantic Wayfinder
 
-A component-identity layer for AI-assisted codebases. Adds a single semantic class to each component (e.g. `aboutHero`, `dashboardSidebar`, `pricingFAQ`) so agents can `grep` and target precisely instead of reading entire files trying to figure out which `<section>` you meant.
+A component-identity layer for AI-assisted codebases. Adds one semantic class to each **page root** (`aboutPage`, `dashboardSettingsPage`, ...) and one to each **reusable component root** (`contactForm`, `mainHeader`, `docsSidebar`, ...) so agents can `grep` and target precisely instead of reading entire files trying to figure out which `<section>` you meant.
 
 The skill is invoked with a single command: `/wayfinder`. On first run it bootstraps the project. On every later run it only processes what's new or changed. Users do not need to think about modes — the command figures out where it is.
 
@@ -16,22 +16,23 @@ The skill is invoked with a single command: `/wayfinder`. On first run it bootst
 
 Invoke this skill when the user:
 
-- Types `/wayfinder` or `/wayfinder <path>` in Claude Code
+- Types `/wayfinder`, `/wayfinder <path>`, or `/wayfinder --remove` in Claude Code
 - Asks to "tag components" or "add semantic class names" to their codebase
 - Mentions Semantic Wayfinding by name
 - Wants AI agents to find their components more reliably
 
 Do not invoke this skill for unrelated styling, refactoring, or formatting tasks.
 
-## Core behavior: one command, two modes
+## Core behavior: one command, three modes
 
-On invocation, check the project root for a `.wayfinder.json` configuration file.
+On invocation, check the project root for a `.wayfinder.json` configuration file and the command-line flags.
 
+- **`--remove` flag passed** → run **remove mode** (strip every class in the manifest)
+- **`--reset` flag passed** → wipe config and re-run bootstrap (after confirmation)
 - **No config file present** → run **bootstrap mode** (full setup + full-codebase tagging)
-- **Config file present** → run **incremental mode** (tag only new or changed files)
-- **`--reset` flag passed** → wipe config and re-run bootstrap
+- **Config file present** → run **incremental mode** (tag only new or changed files; also re-check for newly introduced collisions)
 
-In either mode, never modify files when the working tree is dirty. Always check `git status` first and ask the user to stash or commit before proceeding. After successful work, create an automatic commit with a clear message.
+In every mode, never modify files when the working tree is dirty. Always run `git status` first and ask the user to stash or commit before proceeding. After successful work, create an automatic commit with a clear message.
 
 ---
 
@@ -41,7 +42,7 @@ In either mode, never modify files when the working tree is dirty. Always check 
 
 Show a short greeting:
 
-> Semantic Wayfinder will give your components an identity layer so AI agents can target them precisely. I'll ask a few questions, set up the rules, then tag your existing components. Takes about a minute.
+> Semantic Wayfinder will give your pages and reusable components an identity layer so AI agents can target them precisely. I'll ask two quick questions, set up the rules, then tag your codebase. Takes about a minute.
 
 ### Step 2 — Detect editors
 
@@ -55,26 +56,22 @@ Report what was found. Then ask the user which AI editors they plan to use going
 
 ### Step 3 — Naming convention
 
-Ask three questions in sequence. Show a live preview after each answer so the user sees what their choices produce.
+Two questions in sequence. Show a live preview after each answer so the user sees what their choices produce.
 
 **Q1 — Casing:**
-- `camelCase` (e.g. `aboutHero`)
-- `kebab-case` (e.g. `about-hero`)
+- `camelCase` (recommended for JSX projects) — `aboutPage`, `contactForm`
+- `kebab-case` (recommended for plain HTML / CSS-heavy projects) — `about-page`, `contact-form`
 
-**Q2 — Prefix:**
-- No prefix (default)
-- Yes, use `wf` (e.g. `wfAboutHero` with camelCase or `wf-about-hero` with kebab-case — the prefix style follows the casing, never mixes the two)
-- Yes, custom — let the user type their own (e.g. `myco`)
-
-**Q3 — Scope:**
-- Page-level sections only (recommended): tag `<section>`, `<header>`, `<aside>`, `<nav>`, `<footer>`, `<main>`, and top-level layout `<div>`s
-- All meaningful components: also tag reusable components like cards, banners, buttons inside identifiable groups
+**Q2 — Optional global prefix:**
+- No prefix (recommended) → `aboutPage`, `contactForm`
+- `wf` → `wfAboutPage`, `wfContactForm` (camel) or `wf-about-page`, `wf-contact-form` (kebab)
+- Custom → let the user type their own (e.g. `myco`)
 
 Then summarize:
 
-> Got it. With these choices, your components will look like:
-> - `wf-about-hero` / `wf-about-testimonials` / `wf-dashboard-sidebar`
-> Confirm to proceed.
+> Got it. With these choices, your pages will look like `aboutPage`, `pricingPage`. Your components will look like `contactForm`, `mainHeader`. Confirm to proceed.
+
+(Substitute the live examples for the user's actual casing and prefix.)
 
 ### Step 4 — Git cleanliness check
 
@@ -86,34 +83,31 @@ Wait for the user to clean up. Re-check before proceeding.
 
 ### Step 5 — Write configuration
 
-Create `.wayfinder.json` in the project root with the following structure:
+Create `.wayfinder.json` in the project root:
 
 ```json
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "casing": "camelCase | kebab-case",
   "prefix": "wf | custom-string | null",
-  "scope": "sections | all",
   "editors": ["claude-code", "gemini-cli", "codex-cli"],
   "createdAt": "ISO-8601 timestamp",
   "lastRunAt": "ISO-8601 timestamp",
+  "siteMap": {
+    "pages": {},
+    "components": {}
+  },
   "tagged": {}
 }
 ```
 
 This file is the source of truth for every subsequent run. Do not gitignore it — it should be committed so collaborators inherit the same conventions.
 
-The `tagged` field is the **manifest** — a record of every identity class Wayfinder has written, keyed by file path:
+Two structural fields:
 
-```json
-"tagged": {
-  "app/about/page.tsx": ["aboutHero", "aboutContact"],
-  "app/page.tsx": ["homeHero", "homeTestimonials"],
-  "components/Header.tsx": ["globalHeader"]
-}
-```
+- **`siteMap`** captures the result of Phase 1 (structural analysis). `pages` maps each page file path to its resolved class name. `components` maps each component file path to its resolved class name (after collision resolution). This is what Phase 2 reads to know what to write.
 
-The manifest is the only safe way to distinguish Wayfinder's additions from semantic classes a user wrote by hand. `--remove` reads from it; pattern matching alone would risk deleting user-authored classes that happen to match the convention. The manifest starts empty during Step 5 and is appended to during Step 7.
+- **`tagged`** is the manifest — a record of every identity class Wayfinder has written, keyed by file path. `--remove` reads from it; pattern matching alone would risk deleting user-authored classes. Both fields start empty during Step 5 and are populated during Step 7.
 
 ### Step 6 — Write instruction files
 
@@ -125,26 +119,24 @@ For each editor the user selected during Step 2, write the **shared instruction 
 | Gemini CLI | `GEMINI.md` | `Gemini CLI` |
 | Codex CLI (and other Agent-Skills-compatible agents) | `AGENTS.md` | `Codex CLI` |
 
-The body of the template is identical regardless of editor — only the `{{EDITOR_NAME}}` placeholder in the heading differs. This is intentional: keeping one source of truth for the rules means every editor sees the same instructions and no version drifts.
+The body of the template is identical regardless of editor — only the `{{EDITOR_NAME}}` placeholder in the heading differs.
 
 **Placeholder substitution.** Resolve each placeholder once per project and reuse the same value across every file. From `.wayfinder.json`:
 
 | Placeholder | Source | Example |
 |---|---|---|
-| `{{EDITOR_NAME}}` | Per-file, from the destination map above | `Claude Code`, `Gemini CLI`, `Codex CLI` |
+| `{{EDITOR_NAME}}` | Per-file, from destination map above | `Claude Code` |
 | `{{CASING}}` | `config.casing` | `camelCase` |
-| `{{PREFIX}}` | `config.prefix` or "none" | `wf-`, `myco-`, or `none` |
-| `{{SCOPE}}` | `config.scope` | `sections` or `all` |
-| `{{SCOPE_DESCRIPTION}}` | Mapped from scope | for `sections`: "tag `<section>`, `<header>`, `<aside>`, `<nav>`, `<footer>`, `<main>`, and top-level layout `<div>`s"; for `all`: "all of the above plus reusable cards, banners, and groups inside identifiable contexts" |
-| `{{PREFIX_EXAMPLE}}` | Prefix formatted for the casing | `wf-` (kebab + wf), `wf` (camel + wf), empty string (no prefix) |
-| `{{EXAMPLE_HERO}}` | Live example for an About page hero | `aboutHero` (camel, no prefix), `wfAboutHero` (camel + `wf`), or `wf-about-hero` (kebab + `wf`) — never mix the two casings |
-| `{{EXAMPLE_CONTACT}}` | Live example for an About contact section | `aboutContact`, `wf-about-contact`, etc. |
-| `{{EXAMPLE_SIDEBAR}}` | Live example for a dashboard sidebar | `dashboardSidebar`, etc. |
-| `{{EXAMPLE_FAQ}}` | Live example for a pricing FAQ | `pricingFAQ`, etc. |
+| `{{PREFIX}}` | `config.prefix` or `"none"` | `wf-`, `myco-`, or `none` |
+| `{{PREFIX_EXAMPLE}}` | Prefix formatted for the casing | `wf-` (kebab + wf), `wf` (camel + wf), empty for no prefix |
+| `{{EXAMPLE_PAGE}}` | Live example of a page class | `aboutPage`, `wfAboutPage`, or `wf-about-page` |
+| `{{EXAMPLE_COMPONENT}}` | Live example of a unique-name component class | `contactForm`, `wfContactForm`, or `wf-contact-form` |
+| `{{EXAMPLE_SCOPED}}` | Live example of a domain-scoped component | `docsSidebar`, `wfDocsSidebar`, or `wf-docs-sidebar` |
+| `{{EXAMPLE_PREFIXED}}` | Live example of a collision-resolved component | `mainHeader`, `wfMainHeader`, or `wf-main-header` |
 
 **If a destination file already exists** (e.g. the user already has a `CLAUDE.md`):
-- Do not overwrite. Append the rendered content under a clearly delimited section, opened with `<!-- Begin: Semantic Wayfinder rules -->` and closed with `<!-- End: Semantic Wayfinder rules -->`.
-- If a Wayfinder block already exists between those delimiters, replace it. Don't accumulate stale blocks across runs.
+- Do not overwrite. Append the rendered content between `<!-- Begin: Semantic Wayfinder rules -->` and `<!-- End: Semantic Wayfinder rules -->` delimiters.
+- If a Wayfinder block already exists between those delimiters, replace just that block. Don't accumulate stale blocks across runs.
 
 ---
 
@@ -159,54 +151,68 @@ This file gives {{EDITOR_NAME}} project-specific context. Rules below apply to a
 
 ## Semantic Wayfinding
 
-This project uses **Semantic Wayfinder** to give every component an identity class that lives alongside its utility classes. The point: when the user asks you to edit a specific section (e.g. "the contact section on the about page"), you can find it with one `grep` instead of reading through every file trying to figure out which `<section>` they meant.
+This project uses **Semantic Wayfinder** to give every page and every reusable component an identity class. The point: when the user asks you to edit a specific page or component, you can find it with one `grep` instead of reading through every file trying to figure out which `<section>` they meant.
 
 ### Project configuration
 
 | Setting | Value |
 |---|---|
 | Casing | `{{CASING}}` |
-| Prefix | `{{PREFIX}}` |
-| Scope | `{{SCOPE}}` |
+| Optional prefix | `{{PREFIX}}` |
 
 The canonical configuration lives in `.wayfinder.json` at the project root. Read from it if you need to confirm — never improvise.
 
-### Naming pattern
+### What gets tagged
+
+Exactly two things:
+
+1. **The root JSX element of each page file** (`app/*/page.tsx`, `pages/*.tsx`, route files) gets a `{page}Page` class derived from the file path.
+2. **The root JSX element of each component file** under `components/`, `src/components/`, `app/_components/`, etc. gets the component's identity name, derived from the filename.
+
+Nothing else is tagged. Inline sections inside page files, layout files, generated files, and test files are all skipped.
+
+### Pattern
 
 ```
-{{PREFIX_EXAMPLE}}<pageContext><componentRole>
+{{PREFIX_EXAMPLE}}<identity>
 ```
 
-- **pageContext** is derived from the file path. `app/about/page.tsx` → `about`. `app/dashboard/settings/page.tsx` → `dashboardSettings`. For shared components in `components/`, the context comes from the filename (`MarketingHeader.tsx` → `marketing`) or defaults to `global` for bare-role filenames (`Header.tsx` → `globalHeader`).
-- **componentRole** is derived from what the component does: `hero`, `contact`, `testimonials`, `cta`, `sidebar`, `faq`, `pricing`, `features`, `newsletter`, `footer`, `header`, etc.
+- **For pages**: `{path-as-camelCase}Page`. `app/page.tsx` → `homePage`. `app/about/page.tsx` → `aboutPage`. `app/dashboard/settings/page.tsx` → `dashboardSettingsPage`.
+- **For components**: filename in camelCase (or kebab-case per config). `ContactForm.tsx` → `contactForm`. `TableOfContents.tsx` → `tableOfContents`. `DocsSidebar.tsx` → `docsSidebar`.
+- **For components with role collisions** (e.g., multiple Headers): the most global one gets `main` prefix, others use their domain. `Header.tsx` + `AdminHeader.tsx` → `mainHeader` + `adminHeader`.
 
 ### Examples for this project
 
-| Component | Resulting class |
+| Element | Resulting class |
 |---|---|
-| About page hero | `{{EXAMPLE_HERO}}` |
-| About page contact section | `{{EXAMPLE_CONTACT}}` |
-| Dashboard sidebar | `{{EXAMPLE_SIDEBAR}}` |
-| Pricing FAQ | `{{EXAMPLE_FAQ}}` |
+| About page root | `{{EXAMPLE_PAGE}}` |
+| `ContactForm.tsx` root | `{{EXAMPLE_COMPONENT}}` |
+| `DocsSidebar.tsx` root | `{{EXAMPLE_SCOPED}}` |
+| `Header.tsx` (with a sibling `AdminHeader.tsx` causing collision) | `{{EXAMPLE_PREFIXED}}` |
 
-### Rules when creating or modifying components
+### Rules when creating or modifying code
 
-1. **Place the identity class first.** When creating or modifying a component matching the project scope ({{SCOPE_DESCRIPTION}}), add the semantic identity class as the first entry in the `className` (JSX) or `class` (HTML / Vue / Svelte) attribute, before any utility classes.
-2. **Additive only.** Never remove, replace, or reorder existing utility classes. The identity class lives in front of utilities, not in place of them.
-3. **Idempotent.** Never overwrite an existing semantic class that already matches the project's convention.
-4. **Don't tag layout primitives.** A `<div className="flex">` with one child is not a semantic component — leave it alone.
-5. **Don't tag generated or test files.** Skip `node_modules`, `.next`, `dist`, `build`, `*.test.*`, `*.spec.*`, and gitignored paths.
-6. **Shared components require a scope, never a bare role.** For files under `components/`, `src/components/`, `app/_components/`, etc., the identity class must combine a scope word with the role:
-   - `components/Header.tsx` → `globalHeader`
-   - `components/MarketingHeader.tsx` → `marketingHeader`
-   - `components/admin/AdminSidebar.tsx` → `adminSidebar`
+1. **For a new page file**: add the identity class to the root JSX element (the outermost `<main>`, `<div>`, etc.). The class name is `{path}Page` per the pattern above.
+2. **For a new component file**: add the identity class to the root JSX element. The class name is the filename camelCased. If the filename is generic (`Header`, `Footer`, `Sidebar`, `Nav`, `Button`, `Card`, `Input`, `Modal`) and another component already uses that role, prefix yours with `main` for the global one or a domain word for specialized ones.
+3. **Place the identity class first** in the `className` list, before utility classes.
+4. **Additive only.** Never remove, replace, or reorder existing utility classes. Never delete a Wayfinder identity class either — if removal is intended, the user runs `/wayfinder --remove`.
+5. **Idempotent.** Never overwrite an existing identity class that already matches the convention.
+6. **Don't tag inline sections** inside page files. If the user asks for a `<section>` inside `app/about/page.tsx` to be greppable, suggest extracting it to a component file (`components/AboutHero.tsx`) instead of inventing an inline class.
+7. **Don't tag layout files** (`app/*/layout.tsx`). Layouts are plumbing, out of scope for v0.1.x.
+8. **Don't tag** generated files (`node_modules`, `.next`, `dist`, `build`), test files (`*.test.*`, `*.spec.*`), or gitignored paths.
+9. **Casing follows `.wayfinder.json`, not the filename.** `MarketingHeader.tsx` becomes `marketingHeader` in camelCase, never `MarketingHeader`.
 
-   Bare role names (`header`, `footer`, `sidebar`, `nav`) are forbidden — they collide across instances and defeat `grep`-based targeting. Use `global` as the default scope; use `main` only when the project has multiple distinct top-level surfaces, and stay consistent within a project.
-7. **Casing follows `.wayfinder.json`, not the filename.** A PascalCase filename like `MarketingHeader.tsx` becomes `marketingHeader` in camelCase or `marketing-header` in kebab-case — never `MarketingHeader`.
+### What you can rely on when targeting components
 
-### When the user asks you to edit a specific component
+When the user asks you to edit a specific page or component, the identity class is your fastest path. Reach for `grep` (or your equivalent search tool) on the identity class first — single hit, single target, no detective work.
 
-The semantic class is your fastest path. Reach for `grep` (or your equivalent search tool) on the identity class first — single hit, single target, no detective work.
+- "Edit the about page" → `grep aboutPage` → one file
+- "Update the contact form" → `grep contactForm` → one file (the component definition)
+- "Change the admin header" → `grep adminHeader` → one file
+
+### Reusable components carry their identity wherever they go
+
+A `ContactForm` used on five different pages still has class `contactForm` everywhere. The class describes **what the component is**, never **where it's currently rendered**. Don't try to invent page-specific variants of a component class — if a component appears on multiple pages with truly different needs, that's a refactor decision (split into two components), not a naming decision.
 
 ### When the user wants to bulk-tag the codebase
 
@@ -219,7 +225,7 @@ They should run `/wayfinder --remove`. The skill reads its own manifest in `.way
 
 ### Step 7 — Tag the existing codebase
 
-Proceed automatically into the tagging phase (described in "Tagging Engine" below). The user does not need to issue a second command.
+Proceed automatically into the tagging phase (described in "The tagging engine" below). The user does not need to issue a second command.
 
 ### Step 8 — Commit
 
@@ -228,59 +234,65 @@ Stage `.wayfinder.json`, the editor instruction files, and all tagged source fil
 ```
 chore: set up semantic wayfinder
 
-- Add .wayfinder.json with project conventions
+- Add .wayfinder.json with site map and manifest
 - Add instruction files for <selected editors>
-- Tag <N> components with semantic identity classes
+- Tag <N> page roots and <M> component roots with identity classes
 ```
 
 ### Step 9 — Closing message
 
 Tell the user what happened and what to do next:
 
-> Done. Tagged `N` components, skipped `M` ambiguous ones (you can run `/wayfinder` again to revisit them).
+> Done. Tagged `N` page roots and `M` component roots. Skipped `S` files (low confidence or unsupported root — see report above).
 >
-> From now on, when an AI agent in this project creates new components, it'll add semantic classes automatically. When you've made significant changes and want to catch any drift, run `/wayfinder` again — it will only touch what's new or changed.
+> From now on, when an AI agent in this project creates new pages or components, it'll add identity classes automatically. When you've made significant changes and want to catch any drift, run `/wayfinder` again — it will only touch what's new or changed and re-check for any newly introduced collisions.
 
 ---
 
 ## Incremental mode (subsequent runs)
 
-Triggered when `.wayfinder.json` already exists.
+Triggered when `.wayfinder.json` already exists and no special flag is passed.
 
 ### Step 1 — Acknowledge state
 
 Read `.wayfinder.json`. Show a brief status line:
 
-> Found existing Wayfinder config (casing: camelCase, prefix: wf-). Looking for new or untagged components.
+> Found existing Wayfinder config (casing: camelCase, prefix: none). Looking for new or untagged pages and components, plus any newly introduced collisions.
 
 Do not re-ask any setup questions. The config is the source of truth.
 
 ### Step 2 — Identify scope of work
 
-Find untagged components by combining two signals:
+Two signals combined:
 
-- **Changed files since last run**: `git log --since="<lastRunAt>" --name-only --pretty=format:` then filter to source files in scope (`.tsx`, `.jsx`, `.html`, `.vue`, `.svelte` — whatever the project uses)
-- **Files containing untagged in-scope elements**: regardless of git history, find any `<section>`, `<header>`, etc. in the configured scope that lacks a semantic class matching the project's prefix and casing convention
+- **Changed files since last run**: `git log --since="<lastRunAt>" --name-only --pretty=format:` then filter to relevant source files (page files and files under `components/`).
+- **Files not present in `siteMap`**: any page file or component file whose path isn't tracked in `config.siteMap`.
 
-If both sets are empty, tell the user everything is up to date and exit:
+### Step 3 — Re-run Phase 1 on changed scope
 
-> Everything looks tagged. No new or changed components to handle.
+Re-analyze component role collisions. A new component might introduce a collision with an existing one (e.g., adding `MobileHeader.tsx` when only `Header.tsx` existed before). When this happens:
 
-### Step 3 — Git cleanliness check
+> I detected a new role collision. `Header.tsx` was previously tagged as `header`; with `MobileHeader.tsx` added, I'd rename it to `mainHeader` and tag the new file as `mobileHeader`. This will update existing class references and the manifest. Proceed? (yes / no / show me each rename)
+
+If the user agrees, perform the rename across all locations (single component file each — minimal blast radius). Update the manifest with old → new mappings.
+
+### Step 4 — Git cleanliness check
 
 Same as bootstrap step 4.
 
-### Step 4 — Run the tagging engine
+### Step 5 — Run Phase 2 on new and changed files
 
 Use the same engine as bootstrap. Use the existing config — do not improvise convention.
 
-### Step 5 — Commit
+### Step 6 — Commit
 
 ```
 chore: wayfind incremental update
 
-- Tag <N> new or changed components
-- Update manifest in .wayfinder.json
+- Tag <N> new or changed page roots
+- Tag <M> new or changed component roots
+- <K> collision rename(s): <summary>
+- Update siteMap and manifest in .wayfinder.json
 ```
 
 Update `lastRunAt` in `.wayfinder.json` and include it in the commit.
@@ -291,7 +303,7 @@ Update `lastRunAt` in `.wayfinder.json` and include it in the commit.
 
 Triggered when the user explicitly passes `--remove`. This mode is the inverse of tagging — it strips the identity classes Wayfinder previously added, while leaving every other class (utilities, user-authored semantic classes, anything not in the manifest) untouched.
 
-The manifest in `.wayfinder.json` is the **only** source of truth for what gets removed. Pattern matching against the convention is not used — a user-written `aboutContact` (added by hand, never recorded in the manifest) must never be removed.
+The manifest in `.wayfinder.json` is the **only** source of truth for what gets removed. Pattern matching against the convention is not used — a user-written class that happens to match the convention must never be removed.
 
 ### Step 1 — Confirm
 
@@ -318,21 +330,19 @@ For each `(file, classes[])` entry in `config.tagged`:
    - the order of remaining classes
    - the surrounding whitespace, quotes, and indentation
    - any class not in the manifest entry, even if it matches the convention pattern
-3. If a class is not found in the file (drift — the file was edited by hand after tagging), skip it and record it as drifted. Do not search other files for it.
-4. Once all manifest classes for the file are processed, write the file back.
+3. If a class is not found (drift — the file was edited by hand after tagging), skip it and record it as drifted. Do not search other files.
+4. Write the file back.
 
-If the className list ends up empty (`className=""`), preserve the empty attribute — don't delete the attribute itself. The user's downstream tooling decides what to do with empty classes.
+If the className list ends up empty (`className=""`), preserve the empty attribute — don't delete the attribute itself.
 
 ### Step 4 — Clean up config and instruction files (if "full removal" was chosen)
 
 - Delete `.wayfinder.json`.
-- In each editor instruction file (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`) that exists in the project root, locate the `<!-- Begin: Semantic Wayfinder rules -->` … `<!-- End: Semantic Wayfinder rules -->` block and remove it.
+- In each editor instruction file in the project root, locate the `<!-- Begin: Semantic Wayfinder rules -->` … `<!-- End: Semantic Wayfinder rules -->` block and remove it.
   - If the instruction file becomes empty (only the Wayfinder block existed), delete the file.
   - If other content remains, keep the file with the Wayfinder block excised.
 
 ### Step 5 — Commit
-
-Single commit:
 
 ```
 chore: remove semantic wayfinder
@@ -342,129 +352,132 @@ chore: remove semantic wayfinder
 - Excise Semantic Wayfinder blocks from instruction files
 ```
 
-If only "classes only" was chosen, adjust the commit message to reflect that and clear the `tagged` field in `.wayfinder.json` (keep the config and instruction files in place).
+If only "classes only" was chosen, adjust the commit message and clear the `tagged` field in `.wayfinder.json` (keep the config and instruction files in place).
 
 ### Step 6 — Closing message
 
-> Removed `N` identity classes from `M` files. `D` entries in the manifest had drifted (the class wasn't found in the expected file) and were skipped — these are listed in the report above.
+> Removed `N` identity classes from `M` files. `D` entries in the manifest had drifted (the class wasn't found in the expected file) and were skipped — listed in the report above.
 >
 > To re-install Wayfinder, run `/wayfinder` from this project root.
 
 ### Drift reporting
 
-If any classes were skipped due to drift, report them clearly. The user may want to clean those up by hand or accept them as is. Wayfinder must never guess — silently deleting a class that doesn't match its expected location risks deleting user-authored code.
+If any classes were skipped due to drift, report them clearly. The user may want to clean those up by hand or accept them as is. Wayfinder must never guess.
 
 ---
 
 ## The tagging engine
 
-This is the core logic. It runs in both modes.
+This is the core logic. Runs in both bootstrap and incremental modes, in two phases.
 
-### Input
-- A set of files to process
-- The project's `.wayfinder.json` config
+### Phase 1 — Structural analysis
 
-### Per-component algorithm
+Build a map of the project's pages and components before writing anything to source files.
 
-For each file in scope, parse out candidate components — elements that match the scope rule (sections only, or all meaningful components). For each candidate:
+**1. Discover page files.** Pages are files matching project-router conventions:
+- `app/**/page.{tsx,jsx,ts,js}` (Next.js App Router)
+- `app/**/page.{vue,svelte}` (Vue/Svelte adaptations)
+- `pages/**/*.{tsx,jsx,ts,js}` excluding `_app.*`, `_document.*`, `api/**` (Next.js Pages Router)
+- `src/routes/**/+page.svelte` (SvelteKit)
+- `src/pages/**/*.{vue,svelte}` (Nuxt / Astro / similar)
 
-**1. Skip if already tagged.** A component is "already tagged" if its className list contains a token that matches the prefix + casing convention. Never overwrite existing semantic classes.
+For each page file, derive the page identity:
+- Strip the suffix and route-file noise (`page.tsx`, `+page.svelte`, etc.)
+- Drop route-group parens segments like `(marketing)`
+- Join remaining path segments and camelCase them
+- Append `Page`
+- Examples: `app/page.tsx` → `homePage` (the empty path becomes `home`). `app/about/page.tsx` → `aboutPage`. `app/dashboard/settings/page.tsx` → `dashboardSettingsPage`.
 
-**2. Gather identity signals.** Collect these data points:
+**2. Discover component files.** Components live under any of:
+- `components/`
+- `src/components/`
+- `app/_components/`
+- `lib/components/`
+- Any folder named `components/` at any depth inside `src/` or `app/`
 
-- **Path context**: the file's location reveals page/route context. `app/about/page.tsx` → "about" context. `app/dashboard/settings/page.tsx` → "dashboard settings" context. `components/ui/Button.tsx` → reusable UI primitive.
-- **Element type**: `<section>`, `<header>`, `<aside>`, `<nav>`, `<footer>`, etc. Each implies a role.
-- **Heading text**: any `<h1>`, `<h2>`, or `<h3>` inside the component. Strong signal of purpose.
-- **Body text fragments**: words like "subscribe", "testimonials", "pricing", "FAQ", "newsletter" inside the component.
-- **Structural patterns**: three repeated child elements often means a card grid (features, testimonials, pricing tiers, team members). A form with email + button often means newsletter or contact. Sticky positioning + nav links means header.
-- **Sibling order**: a component's position relative to its siblings in the same file gives ordering context. The first section after `<main>` in a page is usually a hero.
+For each component file, derive a candidate identity:
+- Take the filename without extension
+- Convert PascalCase → camelCase
+- This is the candidate role/identity (e.g., `Header.tsx` → `header`, `DocsSidebar.tsx` → `docsSidebar`).
 
-**3. Form a candidate identity.** Combine the signals into a `pageContext` + `componentRole` pair.
+**3. Detect role collisions.** Group component candidates by their "role" — the last word of the PascalCase filename (or the whole filename if it's a single word):
 
-**Case A — Page files** (`app/<page>/page.tsx`, `app/<page>/layout.tsx`, `pages/<page>.tsx`, `src/routes/<page>/+page.svelte`, etc.):
+- `Header.tsx` → role = `header`
+- `AdminHeader.tsx` → role = `header`
+- `DocsSidebar.tsx` → role = `sidebar`
+- `Sidebar.tsx` → role = `sidebar`
+- `ContactForm.tsx` → role = `contactForm` (multi-word filenames keep their whole name as role)
+- `TableOfContents.tsx` → role = `tableOfContents`
 
-- `pageContext`: derived from the path segment. `app/about/page.tsx` → `about`. `app/dashboard/settings/page.tsx` → `dashboardSettings`.
-- `componentRole`: derived from element + headings + body + structure.
+For multi-word filenames, treat the *whole filename* as a unique role — collisions between different multi-word filenames are rare and usually intentional.
 
-Examples:
-- `<section>` with `<h1>` containing "We build tools…" in `app/about/page.tsx` → `aboutHero`
-- `<section>` with three repeated cards and the word "testimonials" anywhere in `app/page.tsx` → `homeTestimonials`
-- `<aside className="sticky">` with nav links in `app/dashboard/layout.tsx` → `dashboardSidebar`
+For single-word filenames (`Header`, `Footer`, `Sidebar`, `Nav`, `Card`, `Button`, etc.), check whether another component shares that role.
 
-**Case B — Shared / reusable components** (anything under `components/`, `src/components/`, `app/_components/`, `lib/components/`, etc. — not bound to a single page):
+**4. Resolve names with collision rules.**
 
-The same `<pageContext><componentRole>` pattern still applies, but `pageContext` cannot be derived from the path. Resolve it with this priority:
+- **No collision** → use the camelCased filename directly. `TableOfContents.tsx` → `tableOfContents`. `Header.tsx` (only one in project) → `header`.
+- **Collision detected** → resolve as follows:
+  - The component whose path is shortest / closest to the project root is the most "global." Tag it with `main` prefix: `components/Header.tsx` → `mainHeader`.
+  - Specialized variants use their filename's leading word(s) as the prefix: `AdminHeader.tsx` → `adminHeader`. `MobileHeader.tsx` → `mobileHeader`. `BlogPostHeader.tsx` → `blogPostHeader`.
+  - Tie-breaker (two components both at top of `components/` with no leading qualifier in filename — e.g., `Header.tsx` and `Heading.tsx` if they collided): ask the user.
 
-1. **If the filename already carries a scope word**, use it. The PascalCase filename is split on word boundaries; the trailing word becomes the role, the leading word(s) become the context.
-   - `components/MarketingHeader.tsx` → context `marketing`, role `header` → `marketingHeader`
-   - `components/DashboardSidebar.tsx` → context `dashboard`, role `sidebar` → `dashboardSidebar`
-   - `components/BlogPostFooter.tsx` → context `blogPost`, role `footer` → `blogPostFooter`
+**5. Build the siteMap.** Populate `config.siteMap` with the resolved names:
 
-2. **If the filename is just a bare role** (`Header.tsx`, `Footer.tsx`, `Sidebar.tsx`, `Nav.tsx`), the component is global. Prefix with `global` as the default context:
-   - `components/Header.tsx` → `globalHeader`
-   - `components/Footer.tsx` → `globalFooter`
-   - `components/Nav.tsx` → `globalNav`
-
-   Use `main` instead of `global` if the project clearly has multiple top-level surfaces (e.g. marketing site + dashboard share the same root layout) and `global` would feel too broad. The choice is consistent within one run — don't mix `global` and `main` for the same kind of component.
-
-3. **Bare role names are forbidden.** Never produce just `header`, `footer`, `sidebar`, `nav` as an identity class. They collide with multiple instances and defeat the entire wayfinding purpose. Always carry a scope (`global`, `main`, `marketing`, `dashboard`, …).
-
-4. **Casing always follows config.** Regardless of the filename's PascalCase, the output respects `.wayfinder.json`. `MarketingHeader.tsx` → `marketingHeader` (camelCase) or `marketing-header` (kebab-case), never `MarketingHeader`.
-
-Examples:
-- `<header>` in `components/Header.tsx` with nav links → `globalHeader`
-- `<footer>` in `components/MarketingFooter.tsx` → `marketingFooter`
-- `<aside>` in `components/admin/AdminSidebar.tsx` → `adminSidebar`
-
-**4. Apply convention.** Format the candidate using the config's casing and prefix:
-
-- `camelCase` + no prefix → `aboutHero`
-- `camelCase` + `wf` prefix → `wfAboutHero`
-- `kebab-case` + `wf` prefix → `wf-about-hero`
-
-**5. Assign confidence.** Rate the candidate identity:
-
-- **High**: clear signals across at least three data points (e.g. element type matches, heading text matches role, path context matches)
-- **Medium**: signals are partially conflicting or only two of the three present
-- **Low**: very little distinguishing signal — generic `<div>` with no headings, no clear structural pattern
-
-**6. Act on confidence:**
-
-- **High** → write the class to the file directly. Add to the high-confidence summary.
-- **Medium** → write it but flag it for the user to review.
-- **Low** → ask the user.
-
-### Interactive prompts for low-confidence components
-
-Show a focused prompt per component:
-
-```
-[12/42] components/PromoBanner.tsx — line 8
-
-  <section className="px-6 py-12 bg-gradient-to-r ...">
-    <h2>Limited time offer</h2>
-    <p>Get 30% off until midnight</p>
-    <button>Claim now</button>
-  </section>
-
-My best guesses:
-  1) promoBanner
-  2) ctaBanner
-  3) saleAnnouncement
-  4) Type your own
-  5) Skip this one
+```json
+"siteMap": {
+  "pages": {
+    "app/page.tsx": "homePage",
+    "app/about/page.tsx": "aboutPage",
+    "app/dashboard/settings/page.tsx": "dashboardSettingsPage"
+  },
+  "components": {
+    "components/Header.tsx": "mainHeader",
+    "components/AdminHeader.tsx": "adminHeader",
+    "components/ContactForm.tsx": "contactForm",
+    "components/TableOfContents.tsx": "tableOfContents"
+  }
+}
 ```
 
-After the user answers, store the choice and apply the convention. Then check whether other low-confidence candidates in the project share strong structural similarity — if yes, suggest applying the same name in a batch:
+The siteMap is consulted during Phase 2 (no re-derivation) and persisted to `.wayfinder.json` for later runs.
+
+**6. Report collision resolutions to the user.** When prefixes were added because of collisions, show the decisions clearly so the user can object:
 
 ```
-I found 3 other components that look very similar. Apply `promoBanner` to all of them?
-[Yes, all] [Show me each] [No, ask one by one]
+[wayfinder] Collisions resolved:
+  components/Header.tsx        → mainHeader   (most global)
+  components/AdminHeader.tsx   → adminHeader  (from filename)
+  components/Sidebar.tsx       → mainSidebar  (most global)
+  components/DocsSidebar.tsx   → docsSidebar  (from filename)
+
+Confirm to proceed, or type 'rename' to override any of these.
 ```
 
-### Pattern learning within a run
+### Phase 2 — Apply tags
 
-Track user choices in memory during a run. If a user names a component with a structural signature, prefer that name for structurally similar components later in the same run. Do not persist this across runs in V1 — the config file holds conventions, not specific name-to-pattern mappings.
+For each file in the siteMap, read the source, find the root JSX element, and add the identity class.
+
+**Per-file algorithm:**
+
+1. **Skip if the file isn't a page or component file in the siteMap.** (Layout files, generated files, test files, gitignored files — all skipped.)
+
+2. **Find the root JSX element returned by the file.** Patterns:
+   - Default-exported function component: find the `return ( ... )` block, identify the outermost element.
+   - Arrow function shorthand: `export default () => <main>...</main>` — the element is the body.
+   - Class component: find the `render()` method's outermost return element.
+
+3. **Classify the root element type:**
+   - **Native HTML element** (`<main>`, `<div>`, `<section>`, `<header>`, `<article>`, `<aside>`, `<nav>`, `<footer>`, etc.): proceed to write the class.
+   - **Fragment** (`<>` or `<React.Fragment>`): skip with a clear report. Fragments have no DOM element to receive a class. Suggest the user add a wrapping element.
+   - **Custom component** (`<PageWrapper>`, etc.): inspect the wrapper's definition if accessible. If it forwards `className`, write the class and flag as medium-confidence for user review. If it doesn't forward, or Wayfinder can't determine, skip with a report.
+
+4. **Skip if already tagged.** If the root element's className list already contains a class matching the convention (and matching the siteMap entry), do nothing — idempotent.
+
+5. **Skip if a non-conforming Wayfinder-like class exists.** If the className contains something that looks like a Wayfinder class but doesn't match the siteMap (e.g., user hand-tagged something), skip and report for human review. Never overwrite.
+
+6. **Write the class.** Insert the identity class as the **first** entry in the className list. Preserve every other class in order.
+
+7. **Update the manifest.** Append `(file, [class])` to `config.tagged`. The manifest is persisted at the end of the run alongside file changes, in the same commit.
 
 ### File modification rules
 
@@ -472,9 +485,9 @@ When writing a semantic class into a file:
 
 - The semantic class goes **first** in the className list
 - Existing classes are preserved in order
-- For JSX: `className="aboutHero px-6 py-20 bg-neutral-50"`
-- For HTML: `class="aboutHero px-6 py-20 bg-neutral-50"`
-- For Vue: `class="aboutHero px-6 py-20"` (in template) or `:class` (preserve dynamic bindings, prepend to the static portion)
+- For JSX: `className="aboutPage px-6 py-20 bg-neutral-50"`
+- For HTML: `class="aboutPage px-6 py-20 bg-neutral-50"`
+- For Vue: `class="aboutPage px-6 py-20"` (in template) or `:class` (preserve dynamic bindings, prepend to the static portion)
 - For Svelte: same as HTML
 - Never reformat surrounding code. Preserve indentation, quotes, line breaks.
 
@@ -484,24 +497,27 @@ Every time Wayfinder writes a new identity class into a file, append it to the `
 
 ```json
 "tagged": {
-  "<relative/file/path>": ["<class1>", "<class2>", ...]
+  "<relative/file/path>": ["<class>"]
 }
 ```
 
 Rules:
 - File paths are project-root relative, forward-slashed, regardless of OS.
-- Within a file's array, classes appear in the order they were added.
-- Never write the same class twice for the same file — if it's already in the manifest, the tagging engine should have skipped the candidate (rule 1 of the per-component algorithm).
+- Each page file or component file has exactly one entry in `tagged` (one class per file).
+- Never write the same class twice for the same file — if it's already in the manifest, Phase 2 should have skipped the file via the idempotency check.
 - The manifest is persisted at the end of the run alongside the file changes, in the same commit.
-- If a file gets renamed or moved between runs, the next incremental run should detect the new path and migrate the manifest entry. If the file is deleted, drop the entry.
+- If a file gets renamed or moved between runs, the incremental run detects the new path, migrates the manifest entry, and updates the siteMap. If the file is deleted, drop both entries.
 
-### What never to tag
+### Collision rename (incremental only)
 
-- Components already carrying a semantic class matching the project's prefix and casing
-- Pure utility wrappers with no semantic role (e.g. `<div className="flex">` containing only a single child — these are layout primitives)
-- Generated files (`node_modules`, `.next`, `dist`, `build`)
-- Test files (`*.test.*`, `*.spec.*`) by default, unless the user explicitly includes them
-- Files inside paths gitignored by the project
+When Phase 1 in an incremental run detects a new collision that requires renaming an existing class:
+
+1. Show the user the rename plan and ask for confirmation (see "Incremental mode Step 3").
+2. On approval, for each file that needs renaming:
+   - Open the file and replace the old class with the new class in the root element's className.
+   - Update `siteMap.components[file]` from old → new.
+   - Update `tagged[file]` to contain the new class instead of the old.
+3. The atomic rename keeps siteMap, manifest, and source files consistent. There's no intermediate broken state.
 
 ---
 
@@ -512,12 +528,21 @@ After each run, present a structured summary:
 ```
 Semantic Wayfinder — Run Summary
 
-Mode: bootstrap (first run) | incremental
+Mode: bootstrap (first run) | incremental | remove
 Files scanned: 57
-Components found in scope: 134
-Already tagged: 0 | 89
-Newly tagged: 47 (high confidence) + 6 (after review)
-Skipped: 12 (low confidence, user declined)
+  Pages: 8
+  Components: 23
+
+Phase 1 (analysis):
+  Resolved without prefix: 18 components
+  Resolved with `main` prefix: 2 components (Header → mainHeader, Sidebar → mainSidebar)
+  Resolved with scope prefix: 3 components (AdminHeader → adminHeader, ...)
+
+Phase 2 (tagging):
+  Newly tagged: 31 (all roots — 8 pages + 23 components)
+  Skipped (Fragment root): 1 — app/redirect/page.tsx
+  Skipped (custom wrapper, unclear): 0
+  Already tagged: 0 (first run)
 
 Committed as: chore: set up semantic wayfinder
 ```
@@ -529,17 +554,17 @@ If anything went wrong (parse errors, unreadable files, git problems), report it
 ## Things the skill must never do
 
 - Never modify files when git is dirty without explicit user override
-- Never overwrite existing semantic classes that match the project's conventions
-- Never tag components with low confidence without asking the user
-- Never invent new naming conventions mid-run; always use `.wayfinder.json`
-- Never tag files outside of source directories (no `node_modules`, no build output)
-- Never delete utility classes or change styling — Semantic Wayfinding is additive only
-- Never silently skip files due to parse errors — always report them in the summary
-- Never change `.wayfinder.json` configuration during an incremental run — that's what `--reset` is for
-- Never produce a bare role name (`header`, `footer`, `sidebar`, `nav`) for a shared component — every identity class must carry a scope (`global`, `main`, `marketing`, `dashboard`, etc.) so it stays unique under `grep`
+- Never overwrite existing identity classes that match the project's conventions
+- Never produce a bare role name for a colliding component — every colliding role must carry a disambiguation prefix (`main` or domain)
 - Never echo a filename's PascalCase as the class name. Casing always follows `.wayfinder.json` — `MarketingHeader.tsx` becomes `marketingHeader` (camelCase) or `marketing-header` (kebab-case), never `MarketingHeader`
-- Never remove a class during `--remove` unless it is recorded in the manifest for that exact file path. Pattern-matching the convention is not a substitute for the manifest — a user may have written `aboutContact` by hand
-- Never write to the same `tagged` entry without checking for duplicates. If a class is already in the manifest for a file, the candidate should have been skipped earlier in the pipeline
+- Never tag inline sections inside page files, layout files, generated files, build outputs, test files, or gitignored paths
+- Never wrap a Fragment-rooted page in a `<div>` to make it taggable — report and let the user decide
+- Never delete utility classes or change styling — Semantic Wayfinder is additive only
+- Never invent new naming conventions mid-run; always use `.wayfinder.json`
+- Never silently skip files due to parse errors — always report them in the summary
+- Never change `.wayfinder.json` configuration (casing, prefix) during an incremental run — that's what `--reset` is for
+- Never remove a class during `--remove` unless it is recorded in the manifest for that exact file path. Pattern-matching is not a substitute for the manifest
+- Never write to the same `tagged` entry without checking for duplicates
 
 ---
 
@@ -548,6 +573,6 @@ If anything went wrong (parse errors, unreadable files, git problems), report it
 - `/wayfinder` — default behavior (bootstrap or incremental, auto-detected)
 - `/wayfinder <path>` — limit work to a specific directory
 - `/wayfinder --reset` — wipe `.wayfinder.json` and re-run bootstrap (asks for confirmation first)
-- `/wayfinder --remove` — strip every identity class Wayfinder added (per the manifest), then optionally delete `.wayfinder.json` and the editor instruction blocks. User-authored semantic classes and utilities are preserved. Asks for confirmation first
-- `/wayfinder --dry-run` — analyze and report what would change, without writing any files
-- `/wayfinder --check` — same as `--dry-run` but exits with non-zero status if untagged components exist (useful for CI)
+- `/wayfinder --remove` — strip every identity class Wayfinder added (per the manifest), then optionally delete `.wayfinder.json` and the editor instruction blocks. User-authored classes and utilities are preserved. Asks for confirmation first
+- `/wayfinder --dry-run` — analyze (Phase 1) and report what Phase 2 would change, without writing any files
+- `/wayfinder --check` — same as `--dry-run` but exits with non-zero status if untagged pages or components exist (useful for CI)

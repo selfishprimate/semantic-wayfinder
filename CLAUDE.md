@@ -6,13 +6,15 @@ This file gives you the design context for this repository. Read it before makin
 
 ## What this project is
 
-Semantic Wayfinder is an **Agent Skill** that adds semantic identity classes (`aboutHero`, `dashboardSidebar`, `pricingFAQ`, ...) to components in a codebase. The point: when a developer asks an AI agent to "edit the testimonials section on the about page," the agent can `grep` for `aboutTestimonials` and find it in one hit, instead of reading every file in the project trying to guess which `<section>` was meant.
+Semantic Wayfinder is an **Agent Skill** that adds one semantic identity class to every page root (`aboutPage`, `homePage`, `dashboardSettingsPage`...) and one to every component root (`contactForm`, `mainHeader`, `docsSidebar`...). The point: when a developer asks an AI agent to "update the contact form" or "edit the about page," the agent can `grep` for `contactForm` or `aboutPage` and land on the right file in one hit, instead of reading every file trying to guess which one was meant.
 
 The whole motivation is **token economics**. Article-level numbers: a single edit request on a utility-only codebase can burn ~1,300 tokens; on a Wayfinder-tagged codebase, ~190 tokens. The skill is the engine that gets a project from one state to the other.
 
 There's a companion article being written (linked from `README.md` once published) that argues the broader case — call it "Semantic Wayfinding" as a concept that sits on top of Tailwind's "Locality of Behavior" idea, not against it.
 
-## The current state of the project (v0.1)
+**Important — grammar history.** The v0.1 release used a `pageContext + componentRole` pattern (e.g., `aboutHero`, `aboutTestimonials`). That pattern was replaced in v0.1.1 because reusable components carrying page-prefixed names would lie when used on a different page. The current grammar is: pages get `{page}Page`; components get their filename camelCased (with `main`/domain prefix only on role collision). Do not reintroduce page-prefixed component names. See `docs/conventions.md` for the active grammar and `wiki/THE_STORY_BEHIND_THE_PROJECT.md` for the historical design conversation.
+
+## The current state of the project (v0.1.1)
 
 - The skill itself is fully specified in three identical `SKILL.md` files (see "Repo structure" below).
 - The CLI is **not yet built**. It's a placeholder in `cli/README.md` with the planned interface and roadmap.

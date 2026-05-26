@@ -24,7 +24,7 @@ Lives at:
 - `<user-project>/GEMINI.md`
 - `<user-project>/AGENTS.md`
 
-These are written *into* the user's project during `/wayfinder` bootstrap. They tell the user's AI editor "follow this naming convention when generating new code in this project." Wayfinder writes them during Step 6 of bootstrap and re-renders them when configuration changes.
+These are written *into* the user's project during `/wayfinder` bootstrap. They tell the user's AI editor "follow this naming convention when generating new pages or components." Wayfinder writes them during Step 6 of bootstrap and re-renders them when configuration changes.
 
 ### Type 3 — `CLAUDE.md` in the root of *this* repo
 
@@ -32,13 +32,13 @@ These are written *into* the user's project during `/wayfinder` bootstrap. They 
 
 If a contributor says "edit CLAUDE.md," figure out which one they mean first.
 
-## The pre-consolidation history (briefly)
+## The two consolidation events (history)
 
-Step 6 used to contain **three separate instruction templates** inside `SKILL.md` — one for each editor, each in a slightly different format (Claude as a numbered list, Gemini as a table-with-numbered-list, Codex as a terser list). Adding a new behavioral rule meant editing all three, plus the tagging engine, plus the "never do" list. The three templates accumulated minor drift even though they said the same thing.
+**Pre-v0.1:** Step 6 contained three separate instruction templates inside `SKILL.md` — one for each editor, each in a slightly different format (Claude as a numbered list, Gemini as a table-with-numbered-list, Codex as a terser list). Adding a new rule meant editing three places, plus the tagging engine, plus the "never do" list. The three templates accumulated minor drift even though they said the same thing.
 
-In v0.1 we **consolidated** to a single shared template with a placeholder for the editor name. The user-visible behavior is identical: three files written, one per editor. The internal maintenance is one template instead of three.
+**v0.1 consolidation:** Three templates collapsed into one with a `{{EDITOR_NAME}}` placeholder for the heading. Three files written, one template maintained.
 
-See the commit titled *"Consolidate the three editor instruction templates into one shared template"* for the changeover.
+**v0.1.1 grammar rewrite:** The naming pattern itself changed. The old `pageContext + componentRole` rule (producing names like `aboutHero`, `aboutTestimonials`, `aboutContact`) was replaced with **component-identity tagging** (the class is the component's filename; reusable components carry the same class everywhere they appear). Pages still get a `{page}Page` class on the root. This dramatically simplified both the engine and the instruction template. See [`docs/conventions.md`](../docs/conventions.md) for the current grammar.
 
 ## How Step 6 works now
 
@@ -60,11 +60,12 @@ A single markdown block inside `SKILL.md` (under `### Step 6 — Write instructi
 
 The template body covers:
 
-- Project configuration (casing, prefix, scope, drawn from `.wayfinder.json`)
-- Naming pattern with `pageContext` + `componentRole` explanation
-- Concrete examples for the user's choices
-- Rules when creating or modifying components (7 rules in v0.1)
-- What to do when the user asks to edit a specific component
+- Project configuration (casing, optional prefix — both drawn from `.wayfinder.json`)
+- What gets tagged (page roots + component roots, nothing else)
+- The naming pattern (filename → identity, with collision-handling)
+- Concrete examples derived from the user's choices
+- Rules when creating or modifying code (9 rules in v0.1.1)
+- What to do when targeting a component for edits
 - What to do when the user wants to bulk-tag or remove Wayfinder
 
 ### 3. Placeholder substitution
@@ -76,13 +77,11 @@ Placeholders look like `{{NAME}}` and are resolved from the user's `.wayfinder.j
 | `{{EDITOR_NAME}}` | Destination map (per file) | `Claude Code` |
 | `{{CASING}}` | `.wayfinder.json` `casing` | `camelCase` |
 | `{{PREFIX}}` | `.wayfinder.json` `prefix` or `"none"` | `wf-`, `myco-`, or `none` |
-| `{{SCOPE}}` | `.wayfinder.json` `scope` | `sections` or `all` |
-| `{{SCOPE_DESCRIPTION}}` | Mapped from scope value | multi-sentence description |
 | `{{PREFIX_EXAMPLE}}` | Prefix formatted for the casing | `wf-` (kebab + wf), `wf` (camel + wf), empty for no prefix |
-| `{{EXAMPLE_HERO}}` | Computed live example | `aboutHero`, `wfAboutHero`, `wf-about-hero`, etc. |
-| `{{EXAMPLE_CONTACT}}` | Computed live example | `aboutContact`, `wf-about-contact`, etc. |
-| `{{EXAMPLE_SIDEBAR}}` | Computed live example | `dashboardSidebar`, etc. |
-| `{{EXAMPLE_FAQ}}` | Computed live example | `pricingFAQ`, etc. |
+| `{{EXAMPLE_PAGE}}` | Live example of a page class | `aboutPage`, `wfAboutPage`, `wf-about-page` |
+| `{{EXAMPLE_COMPONENT}}` | Live example of a unique-name component | `contactForm`, `wfContactForm`, `wf-contact-form` |
+| `{{EXAMPLE_SCOPED}}` | Live example of a domain-scoped component | `docsSidebar`, `wfDocsSidebar`, `wf-docs-sidebar` |
+| `{{EXAMPLE_PREFIXED}}` | Live example of a collision-resolved component | `mainHeader`, `wfMainHeader`, `wf-main-header` |
 
 All project-wide placeholders (everything except `{{EDITOR_NAME}}`) are resolved **once per run** and reused across all three files. Only `{{EDITOR_NAME}}` varies per file.
 
@@ -105,21 +104,15 @@ This lets Wayfinder coexist with hand-written project rules in the same file.
 
 ## Adding a new rule — the maintenance flow
 
-When a new behavioral rule arises (e.g., "shared components need a scope, never a bare role"), update the following places:
+When a new behavioral rule arises (e.g., "shared components require a scope when colliding"), update the following places:
 
-1. **Shared template inside `SKILL.md`** (Step 6) → add to the "Rules when creating or modifying components" list. *One place, one edit.*
-2. **Tagging engine inside `SKILL.md`** → if the rule also constrains how Wayfinder tags during bootstrap/incremental, add it to the relevant per-component algorithm step.
+1. **Shared template inside `SKILL.md`** (Step 6) → add to the "Rules when creating or modifying code" list. *One place, one edit.*
+2. **Tagging engine inside `SKILL.md`** → if the rule also constrains how Wayfinder tags during bootstrap/incremental, add it to Phase 1 or Phase 2 accordingly.
 3. **"Things the skill must never do"** → if the rule has a negative form ("never produce X"), add it there.
 4. **`docs/conventions.md`** → if the rule has user-facing reference value, add it.
 5. **Commit** — the pre-commit hook propagates `.claude/` to `.agents/` and `.gemini/` automatically.
 
-Total touch points: typically **1–3** edits. Down from 5+ before consolidation (three template copies + tagging engine + never-do).
-
-## Why one template instead of three
-
-The pre-consolidation templates had different formats (table vs list, different headings, different intro wording) but said the same things. Format differences were stylistic, not functional — Claude, Gemini, and Codex agents read all formats the same way. The maintenance cost of keeping three formats in sync wasn't earning its weight.
-
-Trade-off accepted: user-facing instruction files for the three editors now look identical (apart from the heading). If we ever discover a real functional reason for editor-specific instructions (e.g., one editor needs different `grep` phrasing), the destination-map structure already supports branching back to per-editor templates — but no contributor should reintroduce branching without showing what changed to justify it.
+Total touch points: typically **1–3** edits.
 
 ## Related
 

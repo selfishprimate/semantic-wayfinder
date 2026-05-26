@@ -1,151 +1,179 @@
 # Naming Conventions Reference
 
-This document is the **single source of truth** for how Semantic Wayfinder names components. The skill (in `.claude/`, `.agents/`, and `.gemini/`) and the upcoming [CLI](../cli) read from this same set of rules, so output stays identical no matter which surface you use.
+This document is the **single source of truth** for how Semantic Wayfinder names elements. The skill (in `.claude/`, `.agents/`, and `.gemini/`) and the upcoming [CLI](../cli) follow these same rules so output stays identical regardless of which surface you use.
 
-## The three choices
+## What gets tagged
 
-Wayfinder asks three questions during bootstrap. Each is stored in `.wayfinder.json` and never re-asked unless you `--reset`.
+Wayfinder tags exactly two things:
+
+1. **The root element of every page file** (`app/*/page.tsx`, `pages/*.tsx`, route files in Vue/Svelte equivalents)
+2. **The root element of every component file** under `components/`, `src/components/`, `app/_components/`, etc.
+
+Wayfinder does **not** tag:
+- Inline sections inside page files (extract them as components if you want them greppable)
+- Layout files (`app/*/layout.tsx`)
+- Generated or build files (`node_modules`, `.next`, `dist`, `build`)
+- Test files (`*.test.*`, `*.spec.*`)
+- Gitignored paths
+
+## The two bootstrap choices
+
+Wayfinder asks two questions during first-run setup. These are stored in `.wayfinder.json` and never re-asked unless you run `/wayfinder --reset`.
 
 ### 1. Casing
 
-How identifier classes are written.
+How identity classes are written.
 
-| Choice | Pattern | Example |
+| Choice | Example pages | Example components |
 |---|---|---|
-| `camelCase` | `pageContextComponentRole` | `aboutHero`, `dashboardSidebar` |
-| `kebab-case` | `page-context-component-role` | `about-hero`, `dashboard-sidebar` |
+| `camelCase` (default) | `aboutPage`, `dashboardSettingsPage` | `contactForm`, `mainHeader` |
+| `kebab-case` | `about-page`, `dashboard-settings-page` | `contact-form`, `main-header` |
 
-camelCase is friendlier in JSX (`className="aboutHero ..."`); kebab-case is friendlier in plain HTML and CSS files.
+camelCase is friendlier in JSX; kebab-case is friendlier in plain HTML / CSS files.
 
-### 2. Prefix
+### 2. Optional global prefix
 
-A short string prepended to every Wayfinder-generated class. Useful for avoiding collisions with existing class names and for making Wayfinder's output easy to spot in your codebase.
+A short string prepended to every class Wayfinder writes — useful when you want all Wayfinder-managed classes to be visually distinguishable from your other class names.
 
-| Choice | camelCase | kebab-case |
-|---|---|---|
-| **None** (default) | `aboutHero` | `about-hero` |
-| **`wf`** | `wfAboutHero` | `wf-about-hero` |
-| **Custom** (e.g. `myco`) | `mycoAboutHero` | `myco-about-hero` |
-
-The prefix style always follows the casing — capital letter as the separator in camelCase, hyphen in kebab-case. The two styles **never mix** in a single class name. There is no `wf-aboutHero` form.
-
-### 3. Scope
-
-Which elements get tagged.
-
-| Choice | What gets a class |
+| Choice | What you get |
 |---|---|
-| **Sections only** (default) | `<section>`, `<header>`, `<aside>`, `<nav>`, `<footer>`, `<main>`, top-level layout `<div>`s |
-| **All meaningful components** | Above, plus reusable cards, banners, and groups inside identifiable contexts |
+| **None** (default, recommended) | `aboutPage`, `contactForm`, `mainHeader` |
+| **`wf`** | `wfAboutPage`, `wfContactForm`, `wfMainHeader` (camelCase) — or `wf-about-page`, `wf-contact-form` (kebab) |
+| **Custom** (e.g. `myco`) | `mycoAboutPage`, `mycoContactForm` (camel) — or `myco-about-page` (kebab) |
 
-"Sections only" is recommended for most projects — it gives agents the wayfinding they need without cluttering every leaf node.
+The prefix style always follows the casing — capital letter for camelCase, hyphen for kebab-case. **The two styles never mix.** There is no `wf-aboutPage` form.
 
-## Naming pattern
+## Naming rules
 
-All identifier classes follow this pattern:
+### Pages
 
-```
-<prefix><pageContext><componentRole>
-```
+The root JSX element of a page file gets a `{page}Page` class. The `page` part comes from the file path:
 
-- **prefix**: from config (may be empty)
-- **pageContext**: derived from file path (`app/about/page.tsx` → `about`)
-- **componentRole**: derived from the component's content and structure (`hero`, `testimonials`, `cta`, `sidebar`, `faq`, etc.)
-
-### How pageContext is derived
-
-| File path | pageContext |
+| File | Identity class |
 |---|---|
-| `app/about/page.tsx` | `about` |
-| `app/pricing/page.tsx` | `pricing` |
-| `app/dashboard/settings/page.tsx` | `dashboardSettings` |
-| `app/(marketing)/landing/page.tsx` | `landing` (parens are ignored) |
-| `components/sections/Hero.tsx` | *(none — see "shared components" below)* |
-| `pages/about.tsx` | `about` |
-| `src/routes/about/+page.svelte` | `about` |
+| `app/page.tsx` | `homePage` |
+| `app/about/page.tsx` | `aboutPage` |
+| `app/contact/page.tsx` | `contactPage` |
+| `app/blog/page.tsx` | `blogPage` |
+| `app/dashboard/settings/page.tsx` | `dashboardSettingsPage` |
+| `pages/about.tsx` | `aboutPage` |
+| `app/(marketing)/landing/page.tsx` | `landingPage` (route group parens are ignored) |
+| `src/routes/about/+page.svelte` | `aboutPage` |
 
-### How componentRole is derived
+Nested routes concatenate path segments in camelCase (or kebab-case): `app/dashboard/settings/billing/page.tsx` → `dashboardSettingsBillingPage`.
 
-The engine combines several signals:
+### Components
 
-- **Element type** — `<header>`, `<nav>`, `<aside>`, etc.
-- **Heading text** — `<h1>`, `<h2>`, `<h3>` inside the component
-- **Body text fragments** — words like "testimonials", "pricing", "subscribe", "FAQ"
-- **Structural patterns** — three repeated cards, sticky positioning, form + email input
-- **Sibling order** — first section under `<main>` is usually `hero`
+The root JSX element of a component file gets the component's identity name, derived from the filename (PascalCase → camelCase or kebab-case per your config).
 
-## Common roles
-
-A non-exhaustive list of roles Wayfinder produces. These are the most common — actual output depends on what the engine detects.
-
-| Role | Typical signals |
+| File | Identity class |
 |---|---|
-| `hero` | First section, `<h1>`, large copy, no repeated children |
-| `testimonials` | 2+ repeated cards with quoted text and author names |
-| `pricing` | 2+ repeated cards with currency, "month/year", "per user" |
-| `features` | 3+ repeated cards with short heading + body |
-| `faq` | Repeated question/answer pattern, `<details>`, accordion structure |
-| `cta` | Section with single prominent button, often dark background |
-| `newsletter` | Form with email input and subscribe button |
-| `header` | `<header>` or sticky element with nav links |
-| `sidebar` | `<aside>`, often fixed-position, with nav or filter UI |
-| `footer` | `<footer>`, links and copyright |
-| `team` | Repeated cards with images + names + roles |
-| `logos` | Row of images (logo cloud / social proof) |
+| `components/TableOfContents.tsx` | `tableOfContents` |
+| `components/ContactForm.tsx` | `contactForm` |
+| `components/DocsSidebar.tsx` | `docsSidebar` |
+| `components/FlightCard.tsx` | `flightCard` |
+| `components/Header.tsx` (only Header in project) | `header` |
+| `components/Footer.tsx` (only Footer) | `footer` |
 
-## Shared / reusable components
+### Collisions — when prefixes appear
 
-Components that live under `components/`, `src/components/`, `app/_components/`, etc. — i.e. not bound to a single page — still follow the `<pageContext><componentRole>` pattern. `pageContext` just comes from a different source.
+When two or more components share the same role (e.g., a project has both `Header.tsx` and `AdminHeader.tsx`), bare names would collide under `grep`. Wayfinder detects this during Phase 1 (structural analysis) and adds disambiguation prefixes:
 
-### The rule: scope from filename or fall back to `global`
+| Setup | Resolved classes |
+|---|---|
+| Only `components/Header.tsx` | `header` |
+| `components/Header.tsx` + `components/AdminHeader.tsx` | `mainHeader` + `adminHeader` |
+| `components/Sidebar.tsx` + `components/DocsSidebar.tsx` | `mainSidebar` + `docsSidebar` |
+| `components/Header.tsx` + `components/MobileHeader.tsx` + `components/AdminHeader.tsx` | `mainHeader` + `mobileHeader` + `adminHeader` |
 
-1. **Filename already carries a scope word.** PascalCase filenames split on word boundaries. The trailing word is the role; the leading word(s) form the context.
+The prefix rules:
 
-   | File | Context | Role | Identity class |
-   |---|---|---|---|
-   | `components/MarketingHeader.tsx` | `marketing` | `header` | `marketingHeader` |
-   | `components/DashboardSidebar.tsx` | `dashboard` | `sidebar` | `dashboardSidebar` |
-   | `components/BlogPostFooter.tsx` | `blogPost` | `footer` | `blogPostFooter` |
-   | `components/admin/AdminSidebar.tsx` | `admin` | `sidebar` | `adminSidebar` |
+- **`main`** is reserved for the "most global" / "default" instance — the Header you use on the marketing site, the Sidebar that ships site-wide.
+- **Domain or scope prefix** is taken from the filename when present. `AdminHeader.tsx` already names its scope (`admin`), so no analysis needed: it becomes `adminHeader`.
+- **A component with a scope-bearing name is inherently scoped.** `docsSidebar` says "I am the docs sidebar." If someone uses it outside docs, the name lies — and that's a code review concern, not a Wayfinder concern.
 
-2. **Filename is just a bare role.** Components named `Header.tsx`, `Footer.tsx`, `Sidebar.tsx`, `Nav.tsx` are global. Prefix with `global`:
+### Components with already-unique filenames
 
-   | File | Identity class |
-   |---|---|
-   | `components/Header.tsx` | `globalHeader` |
-   | `components/Footer.tsx` | `globalFooter` |
-   | `components/Nav.tsx` | `globalNav` |
+If the filename is descriptive enough that it can't collide (`TableOfContents`, `FlightCard`, `NewsletterSignup`, `PricingTier`), Wayfinder uses it as-is without adding `main` or any other prefix.
 
-   Use `main` instead of `global` if the project has multiple distinct top-level surfaces (e.g. a marketing site **and** a dashboard share the same root layout). Stay consistent — don't mix `global` and `main` for the same kind of component within one project.
+The collision check is based on the **role** (last word of the filename in PascalCase, or the whole name if it's a single word). `TableOfContents` doesn't share its role with anything else, so no prefix is needed.
 
-### What is forbidden
+## What about reused components?
 
-- **Bare role names.** Never produce `header`, `footer`, `sidebar`, or `nav` on their own. They collide with multiple instances and defeat the entire point of wayfinding.
-- **PascalCase echoes.** Never use `Header`, `Footer`, `MarketingHeader` literally. The casing must follow `.wayfinder.json` — `MarketingHeader.tsx` becomes `marketingHeader` (camelCase) or `marketing-header` (kebab-case).
+A component like `ContactForm.tsx` carries the same class (`contactForm`) wherever it's used — on the about page, on the homepage, in a modal. The class reflects **what the component is**, not **where it's rendered**. This is by design:
 
-### Call-site wrappers
+- `grep contactForm` finds every instance across the codebase in one shot
+- The component's identity is stable across refactors (moving it from About to Pricing doesn't require a rename)
+- Reusable components stop lying about their context
 
-When a generic component (e.g. `<Hero />`) is reused across pages, the *call site* can add a page-level wrapper class so the specific instance is still greppable from the page:
+If you need to target a specific instance, you'll usually grep the *containing page* — `grep aboutPage` to find the about page, then narrow within it.
 
-```jsx
-// app/about/page.tsx
-<div className="aboutHeroWrapper">
-  <Hero title="…" />
-</div>
-```
+## Multiple instances of the same component on one page
 
-This keeps the reusable component free of page-specific naming while still giving page-level edits a single grep target.
+Wayfinder makes no attempt to distinguish them via name. Two `<ContactForm />` elements on the same page both have class `contactForm`. Position-in-page is enough disambiguation for human + agent reading the file.
 
-## Collisions and edge cases
+## When the page root isn't a native HTML element
 
-- **Two heroes on one page** — the second gets a numeric suffix: `aboutHero`, `aboutHero2`
-- **Existing class with the same name** — Wayfinder detects and skips; never overwrites
-- **Component already has a Wayfinder-conformant class** — skipped on subsequent runs (idempotent)
-- **No detectable role** — flagged as low confidence; user is asked or it's skipped
+A page file might return:
+
+- A native element (`<main>`, `<div>`, `<section>`): **Tag it.** This is the common case.
+- A Fragment (`<>...</>`): **Skip with a report.** Fragments have no DOM element to receive a class. Wayfinder warns the user and suggests adding a wrapping element.
+- A custom component (`<PageWrapper>...</PageWrapper>`): **Inspect the wrapper.** If it forwards `className`, Wayfinder writes the page class and flags it as medium-confidence for review. If it doesn't forward (or Wayfinder can't tell), skip with a report.
+
+Wayfinder will never wrap your JSX in a `<div>` for you. That would cross the "additive only" line.
+
+## Forbidden patterns
+
+These never appear in Wayfinder output:
+
+- **Bare generic role names when there's a collision.** Wayfinder always prefixes them: never just `header` when two Headers exist.
+- **PascalCase echoes.** `MarketingHeader.tsx` becomes `marketingHeader` (camel) or `marketing-header` (kebab), never `MarketingHeader`.
+- **Mixed casing.** No `wf-aboutPage` (kebab dash + camelCase identifier). Prefix style follows casing.
+- **Page context inside component classes.** A `ContactForm` is never `aboutPageContactForm` — even if it lives on `app/about/page.tsx`.
 
 ## What's never named
 
+- Inline sections inside page files
+- Layout files (for now — under review for v0.2)
 - Pure layout primitives — `<div className="flex">` with one child
-- Generated files — `node_modules`, `.next`, `dist`, `build`
-- Test files — `*.test.*`, `*.spec.*` (unless explicitly included)
+- Generated files (`node_modules`, `.next`, `dist`, `build`)
+- Test files (`*.test.*`, `*.spec.*`) by default
 - Gitignored files
+
+## A short example
+
+A project with:
+
+```
+app/
+├── page.tsx              # homepage
+├── about/page.tsx        # about page
+├── pricing/page.tsx      # pricing page
+└── layout.tsx            # shared layout (skipped)
+
+components/
+├── Header.tsx            # only Header
+├── Footer.tsx            # only Footer
+├── ContactForm.tsx
+├── PricingTier.tsx
+├── TableOfContents.tsx
+└── Newsletter.tsx
+```
+
+Produces these classes:
+
+| Where | Class |
+|---|---|
+| Root of `app/page.tsx` | `homePage` |
+| Root of `app/about/page.tsx` | `aboutPage` |
+| Root of `app/pricing/page.tsx` | `pricingPage` |
+| Root of `components/Header.tsx` | `header` |
+| Root of `components/Footer.tsx` | `footer` |
+| Root of `components/ContactForm.tsx` | `contactForm` |
+| Root of `components/PricingTier.tsx` | `pricingTier` |
+| Root of `components/TableOfContents.tsx` | `tableOfContents` |
+| Root of `components/Newsletter.tsx` | `newsletter` |
+| `app/layout.tsx` | *(not tagged)* |
+| Inline `<section>` inside `app/about/page.tsx` | *(not tagged)* |
+
+If later a second header is added (`components/AdminHeader.tsx`), Wayfinder's incremental run detects the role collision and proposes renaming `header` → `mainHeader`, plus adding `adminHeader` for the new file. User confirms; both classes are updated atomically and the manifest is rewritten.
