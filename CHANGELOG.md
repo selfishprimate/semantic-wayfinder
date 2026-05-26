@@ -17,6 +17,8 @@ While the project is in `0.x`, breaking grammar changes may land in MINOR bumps.
 ### Changed
 - `cli/README.md` planned-interface block updated to drop `--reset` and replace it with `--remove` in the v0.3 CLI roadmap.
 - `docs/conventions.md`, `README.md`, and the editor instruction template's wording reference the two-step path instead of `--reset`.
+- **Pre-commit hook simplified to patch-only auto-bump.** Earlier versions tried to grep the commit message for `feat:` / `BREAKING:` markers to choose a bump type, but the pre-commit hook runs *before* git writes the commit message to disk — so it read either an empty file or the previous commit's stale message. The hook now always patch-bumps; for minor or major bumps, run `./scripts/bump-version.sh minor` (or `major`) before staging. The hook still detects manual bumps and skips its own when one is present.
+- `CONTRIBUTING.md` versioning section rewritten to reflect the new workflow.
 
 ---
 

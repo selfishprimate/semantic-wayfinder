@@ -3,17 +3,26 @@
 #
 # Two responsibilities, both gated on the source-of-truth SKILL.md being staged:
 #
-# 1. Auto-bump the version in SKILL.md frontmatter (unless the user already
-#    bumped it manually as part of their edit).
+# 1. Auto-bump the patch version in SKILL.md frontmatter (unless the user
+#    already bumped it manually as part of their edit).
 #
 # 2. Sync the change to the .agents/ and .gemini/ copies and stage them, so
 #    a single commit always carries the three SKILL.md files together.
 #
-# Bump-type detection reads .git/COMMIT_EDITMSG (populated by `git commit -m`).
-# Default is patch. Override by including one of these tokens in the commit
-# message:
-#   - "BREAKING:" or "breaking:" or "!:"  → major bump
-#   - "feat:" or "FEAT:"                  → minor bump
+# **Why patch-only auto-bump:** the pre-commit hook runs BEFORE git's
+# prepare-commit-msg step, so the commit message isn't yet written to
+# .git/COMMIT_EDITMSG. We can't reliably detect "feat:" / "BREAKING:" prefixes
+# from a not-yet-written file. Earlier versions of this hook tried to grep
+# COMMIT_EDITMSG and silently produced wrong bump types.
+#
+# For minor or major bumps, manually bump BEFORE staging:
+#
+#   ./scripts/bump-version.sh minor
+#   git add .claude/skills/wayfinder/SKILL.md
+#   git commit -m "feat: ..."
+#
+# The hook detects manual bumps (HEAD vs current frontmatter diff) and skips
+# its own auto-bump, so the manual minor/major is preserved.
 #
 # Activated via `git config core.hooksPath scripts/hooks` — see CONTRIBUTING.md.
 
@@ -33,21 +42,9 @@ CURRENT=$(grep "^version:" "$SOURCE" | head -1 | sed 's/^version: *//' | tr -d '
 HEAD_VERSION=$(git show HEAD:"$SOURCE" 2>/dev/null | grep "^version:" | head -1 | sed 's/^version: *//' | tr -d ' ' || echo "")
 
 if [ -z "$HEAD_VERSION" ] || [ "$CURRENT" = "$HEAD_VERSION" ]; then
-  # Determine bump type from commit message if available
-  BUMP_TYPE="patch"
-  MSG_FILE=".git/COMMIT_EDITMSG"
-
-  if [ -f "$MSG_FILE" ]; then
-    # NOTE: use [[:space:]] not \s — BSD grep (macOS default) doesn't honor \s.
-    if grep -qE "(^|[[:space:]])(BREAKING:|breaking:|!:)" "$MSG_FILE"; then
-      BUMP_TYPE="major"
-    elif grep -qE "(^|[[:space:]])(feat:|FEAT:)" "$MSG_FILE"; then
-      BUMP_TYPE="minor"
-    fi
-  fi
-
-  NEW_VERSION=$(./scripts/bump-version.sh "$BUMP_TYPE")
-  echo "[wayfinder] version $CURRENT → $NEW_VERSION ($BUMP_TYPE)"
+  NEW_VERSION=$(./scripts/bump-version.sh patch)
+  echo "[wayfinder] version $CURRENT → $NEW_VERSION (patch)"
+  echo "[wayfinder]   (for minor/major, run \`./scripts/bump-version.sh minor|major\` BEFORE staging)"
 else
   echo "[wayfinder] version already bumped manually: $HEAD_VERSION → $CURRENT"
 fi

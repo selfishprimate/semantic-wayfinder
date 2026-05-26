@@ -53,30 +53,30 @@ You can still run the sync script directly:
 
 The project uses [SemVer](https://semver.org/spec/v2.0.0.html). The version of record lives in `.claude/skills/wayfinder/SKILL.md`'s frontmatter (`version: X.Y.Z`) — this is the **single source of truth**. The other two SKILL.md copies inherit it via sync.
 
-### Automatic bumping (via the pre-commit hook)
+### Automatic patch bumping (via the pre-commit hook)
 
-When you commit a change to `.claude/skills/wayfinder/SKILL.md`, the pre-commit hook auto-bumps the version. The bump type is inferred from the commit message:
+When you commit a change to `.claude/skills/wayfinder/SKILL.md`, the pre-commit hook **auto-bumps the patch version** unless you already bumped it manually. So a `fix:` or `chore:` commit gets a free patch bump from `0.3.0 → 0.3.1`.
 
-| Commit message contains | Bump |
-|---|---|
-| `BREAKING:` or `breaking:` or `!:` | major (`0.1.2 → 1.0.0`) |
-| `feat:` or `FEAT:` | minor (`0.1.2 → 0.2.0`) |
-| anything else (including `fix:`, `chore:`, or no marker) | patch (`0.1.2 → 0.1.3`) |
+### Manual bumping for minor or major
 
-The hook skips bumping if you already bumped the version manually as part of your edit — it diffs the staged frontmatter against `HEAD` and only acts when they match.
-
-### Manual bumping
-
-If you want to bump explicitly before staging:
+The hook **only auto-bumps patch**. For minor or major bumps, bump manually before staging:
 
 ```bash
-./scripts/bump-version.sh patch     # 0.1.2 → 0.1.3
-./scripts/bump-version.sh minor     # 0.1.2 → 0.2.0
-./scripts/bump-version.sh major     # 0.1.2 → 1.0.0
+./scripts/bump-version.sh patch     # 0.3.0 → 0.3.1
+./scripts/bump-version.sh minor     # 0.3.0 → 0.4.0
+./scripts/bump-version.sh major     # 0.3.0 → 1.0.0
 ./scripts/bump-version.sh --show    # just print the current version
 ```
 
-The script modifies `.claude/skills/wayfinder/SKILL.md` in place and prints the new version to stdout. Run sync afterward (or rely on the hook).
+The script modifies `.claude/skills/wayfinder/SKILL.md` in place. After bumping, stage the file and commit normally — the hook detects the manual bump (frontmatter differs from `HEAD`) and skips its own auto-bump.
+
+```bash
+./scripts/bump-version.sh minor
+git add .claude/skills/wayfinder/SKILL.md
+git commit -m "feat: new behavior X"
+```
+
+**Why patch-only auto-detection?** The pre-commit hook runs *before* git writes the commit message to disk, so it can't reliably read `feat:` / `BREAKING:` prefixes to choose a bump type. An earlier version of this hook tried to grep `.git/COMMIT_EDITMSG` and silently produced wrong bump types because the file held the *previous* commit's message. Patch-only with manual override is simpler and reliable.
 
 ### CHANGELOG.md
 
