@@ -2,6 +2,8 @@
 
 > A complete record of the conversation that produced Semantic Wayfinder: the theoretical argument, the design decisions, and the reasoning behind each. Meant as deep context for anyone — human or AI — picking up this project.
 
+> ⚠ **Reading note (v0.1.1):** The naming pattern described in this doc reflects the *original v0.1* design (the `{pageContext}{ComponentRole}` pattern producing names like `aboutHero`, `aboutTestimonials`). In v0.1.1 this was replaced because reusable components couldn't honestly carry page-prefixed names. The active grammar is documented in [`NAMING_GRAMMAR.md`](./NAMING_GRAMMAR.md) (the *why*) and [`docs/conventions.md`](../docs/conventions.md) (the *what*). The rest of this story — the article argument, the LoB engagement, the MBP framing, the editor strategy, the sync mechanism, the tooling decisions — remains accurate.
+
 ---
 
 ## Part 1 — The article that started everything
