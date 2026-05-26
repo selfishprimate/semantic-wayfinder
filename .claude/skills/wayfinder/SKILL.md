@@ -1,7 +1,7 @@
 ---
 name: wayfinder
 description: Tags page roots and component roots in your codebase with semantic identity classes so AI agents can target them precisely instead of guessing. Reduces token burn and back-and-forth on edit requests. Runs on first invocation to set up the project; subsequent invocations only touch new or changed files.
-version: 0.2.0
+version: 0.2.1
 license: MIT
 homepage: https://github.com/selfishprimate/semantic-wayfinder
 ---
@@ -27,10 +27,11 @@ Do not invoke this skill for unrelated styling, refactoring, or formatting tasks
 
 On invocation, check the project root for a `.wayfinder.json` configuration file and the command-line flags.
 
-- **`--remove` flag passed** → run **remove mode** (strip every class in the manifest)
-- **`--reset` flag passed** → wipe config and re-run bootstrap (after confirmation)
+- **`--remove` flag passed** → run **remove mode** (strip every class in the manifest, optionally delete config and instruction blocks)
 - **No config file present** → run **bootstrap mode** (full setup + full-codebase tagging)
 - **Config file present** → run **incremental mode** (tag only new or changed files; also re-check for newly introduced collisions)
+
+To start over with different settings (e.g. change casing or prefix), run `/wayfinder --remove` with the "full removal" option, then run `/wayfinder` again. The two-step flow is cleaner than a dedicated reset flag — it prevents orphan classes (old classes lingering in source after the config changed under a single-step reset).
 
 In every mode, never modify files when the working tree is dirty. Always run `git status` first and ask the user to stash or commit before proceeding. After successful work, create an automatic commit with a clear message.
 
@@ -818,7 +819,7 @@ If anything went wrong during the run (parse errors, unreadable files, git probl
 - Never delete utility classes or change styling — Semantic Wayfinder is additive only
 - Never invent new naming conventions mid-run; always use `.wayfinder.json`
 - Never silently skip files due to parse errors — always report them in the summary
-- Never change `.wayfinder.json` configuration (casing, prefix) during an incremental run — that's what `--reset` is for
+- Never change `.wayfinder.json` configuration (casing, prefix) during an incremental run. If the user wants different settings, the path is `/wayfinder --remove` (full removal) followed by `/wayfinder` to re-bootstrap fresh
 - Never remove a class during `--remove` unless it is recorded in the manifest for that exact file path. Pattern-matching is not a substitute for the manifest
 - Never write to the same `tagged` entry without checking for duplicates
 - **Never defer manifest writes to "end of run."** Each tagged file must be paired with its manifest entry in the same atomic transaction, with `.wayfinder.json` persisted to disk before moving to the next file. A run that gets interrupted mid-tagging must leave a manifest that correctly lists every file that was actually tagged
@@ -833,7 +834,6 @@ If anything went wrong during the run (parse errors, unreadable files, git probl
 
 - `/wayfinder` — default behavior (bootstrap or incremental, auto-detected)
 - `/wayfinder <path>` — limit work to a specific directory
-- `/wayfinder --reset` — wipe `.wayfinder.json` and re-run bootstrap (asks for confirmation first)
-- `/wayfinder --remove` — strip every identity class Wayfinder added (per the manifest), then optionally delete `.wayfinder.json` and the editor instruction blocks. User-authored classes and utilities are preserved. Asks for confirmation first
+- `/wayfinder --remove` — strip every identity class Wayfinder added (per the manifest), then optionally delete `.wayfinder.json` and the editor instruction blocks. User-authored classes and utilities are preserved. Asks for confirmation first. To start fresh with different settings, run this with the "full removal" option, then run `/wayfinder` again to re-bootstrap
 - `/wayfinder --dry-run` — analyze (Phase 1) and report what Phase 2 would change, without writing any files
 - `/wayfinder --check` — same as `--dry-run` but exits with non-zero status if untagged pages or components exist (useful for CI)

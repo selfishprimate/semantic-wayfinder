@@ -9,6 +9,17 @@ While the project is in `0.x`, breaking grammar changes may land in MINOR bumps.
 
 ---
 
+## [0.3.0] — 2026-05-26
+
+### Removed
+- **`--reset` flag.** Replaced by the two-step `/wayfinder --remove` (full removal) + `/wayfinder` (fresh bootstrap). The single-step reset had a subtle bug: it wiped config but left existing tagged classes in source files, which then became orphans if the user picked different casing/prefix in the new bootstrap. The two-step path is unambiguous and cleaner — the manifest is the source of truth for what to strip, and re-bootstrapping starts from a known-clean state.
+
+### Changed
+- `cli/README.md` planned-interface block updated to drop `--reset` and replace it with `--remove` in the v0.3 CLI roadmap.
+- `docs/conventions.md`, `README.md`, and the editor instruction template's wording reference the two-step path instead of `--reset`.
+
+---
+
 ## [0.2.0] — 2026-05-26
 
 Two behavior expansions driven by the second Plainify test run, both surfacing real-world patterns that v0.1.x handled poorly.
@@ -96,7 +107,8 @@ Initial release. Skill specification and surrounding documentation; the original
 
 ---
 
-[Unreleased]: https://github.com/selfishprimate/semantic-wayfinder/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/selfishprimate/semantic-wayfinder/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.3.0
 [0.2.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.2.0
 [0.1.2]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.1.2
 [0.1.1]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.1.1

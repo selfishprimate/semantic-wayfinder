@@ -11,7 +11,7 @@ A standalone command-line tool that brings Semantic Wayfinding to **any** AI cod
 npx semantic-wayfinder              # bootstrap or incremental, auto-detected
 npx semantic-wayfinder app/about    # tag a specific path
 npx semantic-wayfinder --check      # CI-friendly: exit non-zero if untagged components exist
-npx semantic-wayfinder --reset      # wipe config and re-run the wizard
+npx semantic-wayfinder --remove     # strip every tagged class (per manifest), optionally remove config + instruction blocks
 ```
 
 ## Why this exists separately from the skill
@@ -51,7 +51,7 @@ A few things explicitly **not** on the v0.3 menu:
 - [ ] HTML parser
 - [ ] Vue / Svelte template parsers
 - [ ] `--check` mode for CI
-- [ ] `--reset` mode
+- [ ] `--remove` mode (manifest-driven class stripping + optional config cleanup)
 - [ ] First publish to npm
 
 Want to help build this? See [`CONTRIBUTING.md`](../CONTRIBUTING.md) and open an issue first so we can align on direction.

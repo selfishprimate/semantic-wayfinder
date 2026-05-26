@@ -87,7 +87,7 @@ Inline sections inside page files, layout files, generated files, and tests are 
 | **Every later run** | Incremental: reads your existing config, finds new or changed files since last run, tags only those. Re-checks for newly introduced collisions and asks before renaming. |
 | **`/wayfinder --remove`** | Strips every identity class Wayfinder added (per its manifest in `.wayfinder.json`), optionally deletes the config and instruction blocks. Utility classes and any semantic classes you wrote by hand are left untouched. |
 
-Pass `--reset` to start the wizard over.
+To start over with different settings, run `/wayfinder --remove` (with the "full removal" option to also delete `.wayfinder.json` and the instruction blocks), then run `/wayfinder` again — bootstrap will trigger automatically.
 
 > **Note — two different file types, easy to confuse:**
 >

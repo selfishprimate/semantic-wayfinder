@@ -18,7 +18,7 @@ Wayfinder does **not** tag:
 
 ## The two bootstrap choices
 
-Wayfinder asks two questions during first-run setup. These are stored in `.wayfinder.json` and never re-asked unless you run `/wayfinder --reset`.
+Wayfinder asks two questions during first-run setup. These are stored in `.wayfinder.json` and never re-asked unless you run `/wayfinder --remove` (full removal) and then re-bootstrap.
 
 ### 1. Casing
 
