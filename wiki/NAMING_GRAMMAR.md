@@ -171,6 +171,25 @@ Why default to option 1: the wrapper modification is one-time, the prop becomes 
 
 This is the first "structural code modification" Wayfinder is allowed to make. The spec carefully limits it: only when (a) the user explicitly confirms with a visible diff, (b) the wrapper's structure is simple enough for the agent to make a safe change, and (c) the modification is recorded for revert. Anything more invasive (refactoring component types, dealing with HOCs, classNames libraries with complex inputs) is still out of scope — skip with report.
 
+### Dynamic-segment naming in Next.js routes
+
+**Decision:** Strip bracket and parens syntax; preserve the segment name itself; treat parallel-route `@` prefixes as siblings (dropped entirely).
+
+Surfaced during the Nest test (2026-05-27) — a `app/task/[id]/page.tsx` page resolved to `taskIdPage`. The slug worked for grep, but reading "edit the task ID page" out loud felt slightly off, like the name described "the page for a specific ID" rather than the file.
+
+The clarifying realization: **the name derives from the filename, not the rendered URL.** A page slug describes what the *file* is in the route tree, not the runtime route value. `[id]` is part of the file's identity — `task/[id]/page.tsx` is a meaningfully different file from `task/page.tsx`, and the slug should reflect that. The bracket-stripped name (`taskIdPage`) is the honest description of which file you're targeting; it stays stable across different task instances at runtime.
+
+The normalization rules (all derived from this principle):
+
+- **Route groups** (`(marketing)`, `(auth)`) — dropped entirely. They're organizational folders, not URL or file-identity segments.
+- **Dynamic segments** (`[id]`, `[slug]`) — brackets stripped, segment name preserved and folded into the camelCase chain (`taskIdPage`, `blogSlugPage`).
+- **Catch-all segments** (`[...params]`, `[[...slug]]`) — dots and outer brackets dropped, segment name preserved (`docsSlugPage`).
+- **Parallel routes** (`@modal`, `@drawer`) — treated as siblings of their parent, not URL segments — dropped from the name entirely.
+
+Alternative considered: strip the dynamic segment entirely (`task/[id]/page.tsx` → `taskPage`). Cut because it'd collide with `app/task/page.tsx` (if one existed) and would erase a real distinction. The `Id`/`Slug` suffix is small enough to keep, and large enough to disambiguate.
+
+Alternative considered: normalize `[id]` to `Detail` (`taskDetailPage`). Cut because it adds a translation layer with no shared anchor — `Detail` doesn't appear in the filename, breaking the "name = filename, transparent rule" guarantee. Better to keep the slug literal even at the cost of mild awkwardness.
+
 ---
 
 ## Rejected approaches

@@ -2,7 +2,13 @@
 
 > A complete record of the conversation that produced Semantic Wayfinder: the theoretical argument, the design decisions, and the reasoning behind each. Meant as deep context for anyone — human or AI — picking up this project.
 
-> ⚠ **Reading note (v0.1.1):** The naming pattern described in this doc reflects the *original v0.1* design (the `{pageContext}{ComponentRole}` pattern producing names like `aboutHero`, `aboutTestimonials`). In v0.1.1 this was replaced because reusable components couldn't honestly carry page-prefixed names. The active grammar is documented in [`NAMING_GRAMMAR.md`](./NAMING_GRAMMAR.md) (the *why*) and [`docs/conventions.md`](../docs/conventions.md) (the *what*). The rest of this story — the article argument, the LoB engagement, the MBP framing, the editor strategy, the sync mechanism, the tooling decisions — remains accurate.
+> ⚠ **Reading note (current as of v0.4.0):** This story is a frozen historical record of the *original v0.1* design conversation — including the `{pageContext}{ComponentRole}` pattern (`aboutHero`, `aboutTestimonials`) that v0.1.1 replaced and the original v0.2/v0.3 placeholders (Vue/Svelte, CLI) that actual v0.2 / v0.3 shipped *different* work for. For active behavior, consult these instead:
+>
+> - [`docs/conventions.md`](../docs/conventions.md) — the user-facing grammar (the *what*)
+> - [`NAMING_GRAMMAR.md`](./NAMING_GRAMMAR.md) — the design memory for current grammar decisions (the *why*), including the reserved-words rule (v0.1.2), Fragment + wrapper-mod handling (v0.2.0), and dynamic-segment naming
+> - [`../CHANGELOG.md`](../CHANGELOG.md) — the actual release history
+>
+> The rest of this story — the article argument, the LoB engagement, the MBP framing, the editor strategy, the sync mechanism, the tooling decisions — remains accurate and is the deepest source for *why* the project exists.
 
 ---
 

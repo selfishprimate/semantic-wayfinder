@@ -64,7 +64,7 @@ The template body covers:
 - What gets tagged (page roots + component roots, nothing else)
 - The naming pattern (filename → identity, with collision-handling)
 - Concrete examples derived from the user's choices
-- Rules when creating or modifying code (9 rules in v0.1.1)
+- Rules when creating or modifying code (9 numbered rules, with sub-bullets under rule 2 covering the reserved-words logic added in v0.1.2)
 - What to do when targeting a component for edits
 - What to do when the user wants to bulk-tag or remove Wayfinder
 
