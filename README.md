@@ -22,9 +22,9 @@ Semantic Wayfinder ships as an **Agent Skill** for three editors that share the 
 
 | Path | Editor | Status |
 |---|---|---|
-| `.claude/skills/wayfinder/` | Claude Code | ✅ v0.1.1 |
-| `.agents/skills/wayfinder/` | Codex CLI, Aider, and other Agent-Skills-compatible agents | ✅ v0.1.1 |
-| `.gemini/skills/wayfinder/` | Gemini CLI | ✅ v0.1.1 |
+| `.claude/skills/wayfinder/` | Claude Code | ✅ v0.4.0 |
+| `.agents/skills/wayfinder/` | Codex CLI, Aider, and other Agent-Skills-compatible agents | ✅ v0.4.0 |
+| `.gemini/skills/wayfinder/` | Gemini CLI | ✅ v0.4.0 |
 | `cli/` | `npx semantic-wayfinder` for any environment | 🚧 v0.3 |
 
 The three `SKILL.md` files are kept in sync by `scripts/sync-skills.sh`. The `.claude/` copy is the source of truth.
@@ -150,11 +150,20 @@ Same styling, same behavior. Now `grep contactForm` lands directly on this compo
 
 ## Roadmap
 
-- **v0.1** *(current)* — Skill for Claude Code, Codex CLI, and Gemini CLI; JSX/HTML support; bootstrap + incremental
-- **v0.2** — Vue and Svelte template parsers, better confidence scoring
-- **v0.3** — `npx semantic-wayfinder` CLI for headless use, CI, and editors without Agent Skills support (BYOK)
-- **v0.4** — `.wayfinder-patterns.json` for cross-run pattern learning
-- *(later)* — Optional render + vision pass for hard-to-classify components
+**Released** *(see [`CHANGELOG.md`](./CHANGELOG.md) for full notes):*
+
+- **v0.4.0** *(current)* — Phase 1 discovery report auto-continues to Phase 2 unless a real decision is pending
+- **v0.3.0** — `--reset` removed in favor of `--remove` + re-bootstrap; pre-commit hook simplified to patch-only auto-bump
+- **v0.2.0** — Fragment-with-tagable-child rule; custom-component wrapper `className` injection; `wrapperMods` manifest field
+- **v0.1.2** — Reserved-words list (`mainHeader` etc.); Phase 1 confirmation checkpoint; atomic manifest writes
+- **v0.1.1** — Grammar rewrite: filename-derived component identity replaces page-prefixed names
+- **v0.1.0** — Initial skill across Claude Code, Codex CLI, and Gemini CLI
+
+**Planned:**
+
+- **Next** — Vue and Svelte template parsers, better confidence scoring
+- **Later** — `npx semantic-wayfinder` CLI for headless use, CI, and editors without Agent Skills support (BYOK)
+- **Speculative** — `.wayfinder-patterns.json` for cross-run pattern learning; optional render + vision pass for hard-to-classify components
 
 ## Repo layout
 

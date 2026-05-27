@@ -55,16 +55,16 @@ The project uses [SemVer](https://semver.org/spec/v2.0.0.html). The version of r
 
 ### Automatic patch bumping (via the pre-commit hook)
 
-When you commit a change to `.claude/skills/wayfinder/SKILL.md`, the pre-commit hook **auto-bumps the patch version** unless you already bumped it manually. So a `fix:` or `chore:` commit gets a free patch bump from `0.3.0 → 0.3.1`.
+When you commit a change to `.claude/skills/wayfinder/SKILL.md`, the pre-commit hook **auto-bumps the patch version** unless you already bumped it manually. So a `fix:` or `chore:` commit gets a free patch bump from `0.4.0 → 0.4.1`.
 
 ### Manual bumping for minor or major
 
 The hook **only auto-bumps patch**. For minor or major bumps, bump manually before staging:
 
 ```bash
-./scripts/bump-version.sh patch     # 0.3.0 → 0.3.1
-./scripts/bump-version.sh minor     # 0.3.0 → 0.4.0
-./scripts/bump-version.sh major     # 0.3.0 → 1.0.0
+./scripts/bump-version.sh patch     # 0.4.0 → 0.4.1
+./scripts/bump-version.sh minor     # 0.4.0 → 0.5.0
+./scripts/bump-version.sh major     # 0.4.0 → 1.0.0
 ./scripts/bump-version.sh --show    # just print the current version
 ```
 

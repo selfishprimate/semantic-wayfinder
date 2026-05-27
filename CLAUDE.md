@@ -12,18 +12,27 @@ The whole motivation is **token economics**. Article-level numbers: a single edi
 
 There's a companion article being written (linked from `README.md` once published) that argues the broader case — call it "Semantic Wayfinding" as a concept that sits on top of Tailwind's "Locality of Behavior" idea, not against it.
 
-**Important — grammar history.** The v0.1 release used a `pageContext + componentRole` pattern (e.g., `aboutHero`, `aboutTestimonials`). That pattern was replaced in v0.1.1 because reusable components carrying page-prefixed names would lie when used on a different page. The current grammar is: pages get `{page}Page`; components get their filename camelCased (with `main`/domain prefix only on role collision). Do not reintroduce page-prefixed component names. See `docs/conventions.md` for the active grammar and `wiki/THE_STORY_BEHIND_THE_PROJECT.md` for the historical design conversation.
+**Important — grammar history.** The v0.1.0 release used a `pageContext + componentRole` pattern (e.g., `aboutHero`, `aboutTestimonials`). That pattern was replaced in v0.1.1 because reusable components carrying page-prefixed names would lie when used on a different page. The current grammar is: pages get `{page}Page`; components get their filename camelCased (with `main`/domain prefix only on role collision *or* when the bare filename is on the reserved-words list — `Header.tsx` alone resolves to `mainHeader`, not `header`). Do not reintroduce page-prefixed component names. See `docs/conventions.md` for the active grammar and `wiki/THE_STORY_BEHIND_THE_PROJECT.md` for the historical design conversation.
 
-## The current state of the project (v0.1.1)
+## The current state of the project (v0.4.0)
 
-- The skill itself is fully specified in three identical `SKILL.md` files (see "Repo structure" below).
-- The CLI is **not yet built**. It's a placeholder in `cli/README.md` with the planned interface and roadmap.
-- There are no tests, no build system, no package manager. The skill is just markdown.
+- The skill itself is fully specified in three identical `SKILL.md` files (see "Repo structure" below). See `CHANGELOG.md` for the full release history.
+- Real-world tested on two projects so far — Plainify (drove v0.1.2 hardening and v0.2.0 expansions) and Nest (Next.js, May 27 — confirmed v0.4.0 flow and surfaced the dynamic-segment naming clarification).
+- The CLI is **not yet started**. `cli/README.md` holds the planned interface and roadmap as a placeholder; no implementation work has begun.
+- There are no tests, no build system, no package manager. The skill is just markdown — by design until the CLI lands.
 - Nothing has been published yet — no npm, no GitHub release, no Medium article live.
 
-What's working: the skill instructions, the editor coverage (Claude Code, Codex CLI, Gemini CLI), the sync script, the documentation, before/after examples.
+What v0.4.0 brings that v0.1.1 didn't:
+- **Reserved-words rule** (v0.1.2) — bare reserved filenames like `Header.tsx` get a `main` prefix.
+- **Atomic manifest writes** (v0.1.2) — each tagged file is persisted before the next, surviving token-limit interruptions.
+- **Phase 1 confirmation checkpoint + completeness check** (v0.1.2) — discovery plan shown before any writes; `siteMap` vs `tagged` reconciled at end of run.
+- **Fragment-with-tagable-child** (v0.2.0) — `<><Header /><main>...</main></>` page roots now tag the inner `<main>` instead of skipping.
+- **Custom-wrapper `className` injection + `wrapperMods` manifest field** (v0.2.0) — Wayfinder can offer to add a `className?` prop to wrapper components, recorded for `--remove` to revert.
+- **`--remove` flow replaces `--reset`** (v0.3.0) — the only way to start over is `--remove` then re-bootstrap. Manifest is the source of truth for what to strip.
+- **Pre-commit hook simplified to patch-only auto-bump** (v0.3.0) — minor/major bumps are explicit via `scripts/bump-version.sh`.
+- **Phase 1 auto-continues to Phase 2** (v0.4.0) — no more "reply go" gate; the run pauses only for genuine decisions.
 
-What needs work: real-world testing on actual codebases, the CLI implementation, possibly Vue/Svelte support, the article being published.
+What still needs work: more real-world testing, the CLI implementation, Vue/Svelte support, the article being published.
 
 ## Repo structure
 
@@ -33,9 +42,9 @@ semantic-wayfinder/
 ├── .agents/skills/wayfinder/SKILL.md   ← synced copy (Codex CLI, generic Agent-Skills agents)
 ├── .gemini/skills/wayfinder/SKILL.md   ← synced copy (Gemini CLI)
 ├── scripts/sync-skills.sh               ← keeps the three SKILL.md copies in sync
-├── cli/                                 ← v0.3 placeholder, just README
+├── cli/                                 ← CLI placeholder, not yet started
 ├── docs/conventions.md                  ← naming rules reference
-├── examples/                            ← before.tsx, after.tsx, .wayfinder.json
+├── examples/                            ← before.tsx, after.tsx, after-with-extracted-components.tsx, .wayfinder.json
 ├── README.md
 ├── CONTRIBUTING.md
 ├── LICENSE
@@ -118,7 +127,7 @@ Wayfinder never removes utility classes, never reformats surrounding code, never
 
 ### Markdown is the entire implementation
 
-There's no parser, no AST traversal in code, no Node.js. The skill is just instructions; the agent reading it (Claude Code, Codex, Gemini) does the heavy lifting. This is intentional for v0.1. The CLI in v0.3 will introduce actual code.
+There's no parser, no AST traversal in code, no Node.js. The skill is just instructions; the agent reading it (Claude Code, Codex, Gemini) does the heavy lifting. This was intentional through the v0.x skill-only releases. The eventual CLI will introduce actual code — but that work hasn't started.
 
 ## Things explicitly *not* in scope for v0.x
 
@@ -128,7 +137,7 @@ There's no parser, no AST traversal in code, no Node.js. The skill is just instr
 - Local LLM support (Ollama) — quality on small models isn't there for code understanding
 - Adding new naming convention options without a clear case
 - Making the three skill copies behave differently (until we explicitly decide to)
-- Vue and Svelte support — slated for v0.2, not v0.1
+- Vue and Svelte support — still planned, not yet started (the original v0.2 placeholder; v0.2 ended up shipping Fragment + wrapper-mod handling instead)
 - Tests, build system, CI infrastructure — none of this exists yet, add it deliberately
 
 ## Where to look when you have a question
