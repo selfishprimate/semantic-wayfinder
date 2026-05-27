@@ -7,38 +7,46 @@
 //
 // File layout this example assumes:
 //   app/about/page.tsx          ← below (the page file)
-//   components/AboutHero.tsx
+//   components/Hero.tsx
 //   components/Testimonials.tsx
 //   components/CTASection.tsx
+//
+// Note: we name the extracted component `Hero.tsx`, NOT `AboutHero.tsx`.
+// Wayfinder derives the class from the filename, so `AboutHero.tsx` would
+// produce `aboutHero` — a class that lies the moment you render it on
+// the pricing page. Generic filenames give honest classes. If you ever
+// genuinely need an about-only and pricing-only hero, that's a real
+// collision and Wayfinder will resolve it with disambiguation prefixes.
 
 // ─── app/about/page.tsx ─────────────────────────────────────────────
 //
 // Page root carries `aboutPage`. Inside, you compose the extracted
 // components. The page file is short and obvious.
 
-import AboutHero from "@/components/AboutHero";
+import Hero from "@/components/Hero";
 import Testimonials from "@/components/Testimonials";
 import CTASection from "@/components/CTASection";
 
 export default function AboutPage() {
   return (
     <main className="aboutPage min-h-screen bg-white">
-      <AboutHero />
+      <Hero />
       <Testimonials />
       <CTASection />
     </main>
   );
 }
 
-// ─── components/AboutHero.tsx ───────────────────────────────────────
+// ─── components/Hero.tsx ────────────────────────────────────────────
 //
-// Root element carries `aboutHero`. If you later reuse this on a
-// different page, the class stays the same — `aboutHero` describes
-// what the component IS, not where it's used.
+// Root element carries `hero`. The class is filename-derived, so it
+// stays the same wherever this component renders — about page, pricing
+// page, or a marketing modal. The identity describes what the component
+// IS, not where it's used.
 
-export function AboutHero() {
+export function Hero() {
   return (
-    <section className="aboutHero px-6 py-24 md:py-32 max-w-6xl mx-auto">
+    <section className="hero px-6 py-24 md:py-32 max-w-6xl mx-auto">
       <div className="text-center">
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
           We build tools for makers
@@ -105,6 +113,7 @@ export function CTASection() {
 // ─── Result: agent targeting becomes trivial ─────────────────────────
 //
 // "Edit the about page"           → grep aboutPage     → app/about/page.tsx
+// "Tweak the hero"                → grep hero          → components/Hero.tsx
 // "Update the testimonials"       → grep testimonials  → components/Testimonials.tsx
 // "Change the CTA"                → grep ctaSection    → components/CTASection.tsx
 //

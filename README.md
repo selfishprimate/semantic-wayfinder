@@ -107,7 +107,9 @@ You pick two things during bootstrap; Wayfinder stays consistent forever after.
 
 That's it. There used to be a third "scope" question in early drafts; it's gone. Wayfinder always tags page roots and component roots — the rule is fixed, no choice needed.
 
-**Collision handling.** When two components share a role (e.g., both `Header.tsx` and `AdminHeader.tsx`), Wayfinder adds disambiguation prefixes during Phase 1: the most global one becomes `mainHeader`, the specialized one becomes `adminHeader`. If only one component has that role in your project, no prefix is added — it's just `header`.
+**Collision handling.** When two components share a role (e.g., both `Header.tsx` and `AdminHeader.tsx`), Wayfinder adds disambiguation prefixes during Phase 1: the most global one becomes `mainHeader`, the specialized one becomes `adminHeader`.
+
+There's also a **reserved-words rule**: role names that are HTML elements (`header`, `footer`, `nav`, `aside`, `section`, `form`, ...) or universal UI patterns (`sidebar`, `modal`, `card`, `tooltip`, `banner`, ...) always get a `main` prefix when the filename is bare, even without a collision — a bare `header` class would be drowned by every `<header>` tag in `grep`. So a single `Header.tsx` alone resolves to `mainHeader`, not `header`. Roles outside this list with no collision keep their bare filename: `TableOfContents.tsx` → `tableOfContents`, `QuickAdd.tsx` → `quickAdd`.
 
 The config lives in `.wayfinder.json` at your project root. Commit it — your collaborators should inherit the same conventions. See [`docs/conventions.md`](./docs/conventions.md) for the full grammar reference.
 

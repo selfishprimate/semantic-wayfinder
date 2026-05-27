@@ -10,10 +10,15 @@
 // reusable component used elsewhere.
 //
 // To make the inline sections greppable too, extract them into component
-// files (e.g. components/AboutHero.tsx, components/Testimonials.tsx,
+// files (e.g. components/Hero.tsx, components/Testimonials.tsx,
 // components/CTASection.tsx). Each extracted component's root element
-// will then get its own identity class (`aboutHero`, `testimonials`,
+// will then get its own identity class (`hero`, `testimonials`,
 // `ctaSection`) — independent of the page it's used on.
+//
+// Tip: don't name extracted components after the page they came from.
+// `AboutHero.tsx` produces `aboutHero`, which lies the moment you reuse
+// the component on the pricing page. Prefer `Hero.tsx` — the class
+// describes what the component IS, not where it lives.
 //
 // Config used for this example:
 //   { "casing": "camelCase", "prefix": null }
