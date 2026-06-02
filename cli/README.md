@@ -1,6 +1,6 @@
 # Semantic Wayfinder — CLI
 
-> 🚧 **Coming in v0.3** — this package is a placeholder. The Agent Skill is available now in [`.claude/`](../.claude/skills/wayfinder), [`.agents/`](../.agents/skills/wayfinder), and [`.gemini/`](../.gemini/skills/wayfinder), and the CLI will share its engine.
+> 🚧 **Coming soon** — this package is a placeholder. The Agent Skill is available now in [`.claude/`](../.claude/skills/wayfinder), [`.agents/`](../.agents/skills/wayfinder), and [`.gemini/`](../.gemini/skills/wayfinder), and the CLI will share its engine.
 
 ## What this will be
 
@@ -34,7 +34,7 @@ The skill is great if you live in Claude Code. The CLI exists for everyone else:
 
 ## What's not planned
 
-A few things explicitly **not** on the v0.3 menu:
+A few things explicitly **not** on the menu:
 
 - A hosted cloud service (privacy concerns, infrastructure cost, scope creep)
 - A GUI or web dashboard

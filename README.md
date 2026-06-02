@@ -25,7 +25,7 @@ Semantic Wayfinder ships as an **Agent Skill** for three editors that share the 
 | `.claude/skills/wayfinder/` | Claude Code | ✅ v0.4.0 |
 | `.agents/skills/wayfinder/` | Codex CLI, Aider, and other Agent-Skills-compatible agents | ✅ v0.4.0 |
 | `.gemini/skills/wayfinder/` | Gemini CLI | ✅ v0.4.0 |
-| `cli/` | `npx semantic-wayfinder` for any environment | 🚧 v0.3 |
+| `cli/` | `npx semantic-wayfinder` for any environment | 🚧 Soon |
 
 The three `SKILL.md` files are kept in sync by `scripts/sync-skills.sh`. The `.claude/` copy is the source of truth.
 
@@ -152,7 +152,8 @@ Same styling, same behavior. Now `grep contactForm` lands directly on this compo
 
 **Released** *(see [`CHANGELOG.md`](./CHANGELOG.md) for full notes):*
 
-- **v0.4.0** *(current)* — Phase 1 discovery report auto-continues to Phase 2 unless a real decision is pending
+- **v0.4.1** *(current)* — doc-consistency fixes: reserved-word example correction, version-label fix, example config bumped to the 0.2.0 schema
+- **v0.4.0** — Phase 1 discovery report auto-continues to Phase 2 unless a real decision is pending
 - **v0.3.0** — `--reset` removed in favor of `--remove` + re-bootstrap; pre-commit hook simplified to patch-only auto-bump
 - **v0.2.0** — Fragment-with-tagable-child rule; custom-component wrapper `className` injection; `wrapperMods` manifest field
 - **v0.1.2** — Reserved-words list (`mainHeader` etc.); Phase 1 confirmation checkpoint; atomic manifest writes
@@ -172,7 +173,7 @@ semantic-wayfinder/
 ├── .claude/skills/wayfinder/SKILL.md    # Claude Code skill (source of truth)
 ├── .agents/skills/wayfinder/SKILL.md    # Codex CLI / generic skill
 ├── .gemini/skills/wayfinder/SKILL.md    # Gemini CLI skill
-├── cli/                                          # v0.3 placeholder
+├── cli/                                          # placeholder, coming soon
 ├── docs/conventions.md                           # naming rules reference
 ├── examples/                                     # before/after + sample config
 ├── scripts/sync-skills.sh                        # keeps the three SKILL.md copies in sync

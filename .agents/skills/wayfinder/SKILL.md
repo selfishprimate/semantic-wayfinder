@@ -1,7 +1,7 @@
 ---
 name: wayfinder
 description: Tags page roots and component roots in your codebase with semantic identity classes so AI agents can target them precisely instead of guessing. Reduces token burn and back-and-forth on edit requests. Runs on first invocation to set up the project; subsequent invocations only touch new or changed files.
-version: 0.4.0
+version: 0.4.1
 license: MIT
 homepage: https://github.com/selfishprimate/semantic-wayfinder
 ---
@@ -549,7 +549,7 @@ Single-word filenames have themselves as the role. Multi-word filenames use the 
 
 **4. Check the reserved-words list.** Some role names are inherently noisy under `grep` even without a component-level collision — either because they're native HTML element names (`<header>`, `<footer>`, `<nav>`) or because they're universal UI patterns that appear in every codebase. A bare `header` class would compete with every `<header>` element in the project for grep attention.
 
-The hardcoded reserved list (v0.1.1):
+The hardcoded reserved list (v0.1.2):
 
 | Tier | Words |
 |---|---|

@@ -9,6 +9,18 @@ While the project is in `0.x`, breaking grammar changes may land in MINOR bumps.
 
 ---
 
+## [0.4.1] — 2026-06-02
+
+### Fixed
+- **`examples/.wayfinder.json` violated the reserved-words rule.** `Footer.tsx` resolved to `footer`; corrected to `mainFooter` (a bare reserved-word filename always gets the `main` prefix). The example was internally inconsistent — `Header.tsx` was already correctly `mainHeader`.
+- **Reserved-words list mislabeled as `(v0.1.1)`** in the three `SKILL.md` copies and `docs/conventions.md`. The list was actually introduced in v0.1.2 — corrected to `(v0.1.2)`.
+
+### Changed
+- **`examples/.wayfinder.json` bumped to schema `0.2.0`** and gained the `wrapperMods: {}` field, matching what bootstrap writes since v0.2.0.
+- **CLI placeholder no longer promises a specific version.** "Coming in v0.3" / "🚧 v0.3" became impossible once v0.3.0 and v0.4.0 shipped without the CLI — replaced with "coming soon" in `README.md` and `cli/README.md`.
+
+---
+
 ## [0.4.0] — 2026-05-27
 
 ### Changed
@@ -125,7 +137,8 @@ Initial release. Skill specification and surrounding documentation; the original
 
 ---
 
-[Unreleased]: https://github.com/selfishprimate/semantic-wayfinder/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/selfishprimate/semantic-wayfinder/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.4.1
 [0.4.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.4.0
 [0.3.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.3.0
 [0.2.0]: https://github.com/selfishprimate/semantic-wayfinder/releases/tag/v0.2.0

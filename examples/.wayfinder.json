@@ -1,5 +1,5 @@
 {
-  "version": "0.1.1",
+  "version": "0.2.0",
   "casing": "camelCase",
   "prefix": null,
   "editors": ["claude-code"],
@@ -14,7 +14,7 @@
     "components": {
       "components/Header.tsx": "mainHeader",
       "components/AdminHeader.tsx": "adminHeader",
-      "components/Footer.tsx": "footer",
+      "components/Footer.tsx": "mainFooter",
       "components/ContactForm.tsx": "contactForm",
       "components/TableOfContents.tsx": "tableOfContents",
       "components/DocsSidebar.tsx": "docsSidebar"
@@ -26,9 +26,10 @@
     "app/pricing/page.tsx": ["pricingPage"],
     "components/Header.tsx": ["mainHeader"],
     "components/AdminHeader.tsx": ["adminHeader"],
-    "components/Footer.tsx": ["footer"],
+    "components/Footer.tsx": ["mainFooter"],
     "components/ContactForm.tsx": ["contactForm"],
     "components/TableOfContents.tsx": ["tableOfContents"],
     "components/DocsSidebar.tsx": ["docsSidebar"]
-  }
+  },
+  "wrapperMods": {}
 }

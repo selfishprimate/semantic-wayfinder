@@ -111,7 +111,7 @@ The prefix rules:
 - **Domain or scope prefix** comes from the filename when present. `AdminHeader.tsx` → `adminHeader`, `MarketingHeader.tsx` → `marketingHeader`, `MobileNav.tsx` → `mobileNav`.
 - **A component with a scope-bearing name is inherently scoped.** `docsSidebar` says "I am the docs sidebar." If someone uses it outside docs, the name lies — and that's a code review concern, not a Wayfinder concern.
 
-### The reserved-words list (v0.1.1)
+### The reserved-words list (v0.1.2)
 
 These role names always get a `main` prefix when the filename is bare (no qualifier in front). Hardcoded in the skill; not user-configurable in v0.1.x.
 
