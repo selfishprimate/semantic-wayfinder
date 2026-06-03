@@ -51,16 +51,24 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="mx-auto max-w-5xl border-t border-white/[0.07] px-6 py-10 text-center text-sm text-zinc-500">
-        Built by{" "}
-        <a
-          href="https://linkedin.com/in/selfishprimate"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-zinc-300 transition-colors hover:text-white"
-        >
-          selfishprimate
-        </a>
+      <footer className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 border-t border-white/[0.07] px-6 py-8 text-sm text-zinc-500 sm:flex-row">
+        <span className="font-mono">
+          <span className="text-zinc-500">.</span>
+          <span className="text-zinc-400">semanticWayfinder</span>
+          <span className="text-zinc-600"> © 2026</span>
+        </span>
+        <span>
+          Made by{" "}
+          <a
+            href="https://linkedin.com/in/selfishprimate"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-zinc-300 transition-colors hover:text-white"
+          >
+            selfishprimate
+          </a>{" "}
+          for the open source community.
+        </span>
       </footer>
     </div>
   );

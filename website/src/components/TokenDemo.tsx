@@ -103,7 +103,7 @@ export function SimControls({ sim }: { sim: Sim }) {
           </>
         ) : (
           <>
-            <Play className="h-4 w-4" /> {done ? "Run Again" : "Run The Simulation"}
+            <Play className="h-4 w-4" /> {done ? "Run Again" : "Run the Simulation"}
           </>
         )}
       </Button>
