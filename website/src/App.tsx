@@ -20,11 +20,11 @@ export default function App() {
       </div>
 
       {/* Hero */}
-      <header className="mx-auto max-w-5xl border-b border-white/[0.07] px-6 pb-16 pt-24 text-center">
-        <div className="mb-8 flex items-center justify-center gap-2.5">
-          <Navigation className="h-6 w-6 text-zinc-300" />
-          <span className="font-display text-2xl font-semibold tracking-tight text-white">
-            Semantic Wayfinder
+      <header className="mx-auto max-w-5xl border-b border-white/[0.07] px-6 pb-24 pt-24 text-center">
+        <div className="mb-8 flex flex-col items-center gap-3">
+          <Navigation className="h-7 w-7 text-emerald-400" />
+          <span className="font-mono text-xl font-medium tracking-tight text-white">
+            <span className="text-zinc-500">.</span>semanticWayfinder
           </span>
         </div>
         <h1 className="font-display text-4xl font-bold !leading-[1.15] tracking-tight text-white sm:text-5xl">
@@ -32,9 +32,12 @@ export default function App() {
           <br className="hidden sm:block" />
           So Agents Stop Guessing
         </h1>
-        <p className="mx-auto mt-5 max-w-xl text-balance text-lg text-zinc-400">
-          One semantic class on every page and component, so an AI agent finds the right file with a
-          single <code className="text-zinc-300">grep</code> instead of burning tokens on detective work.
+        <p className="mx-auto mt-5 max-w-2xl text-balance text-lg text-zinc-400">
+          One semantic class on every page and component, naming what each one is. That's{" "}
+          <span className="text-zinc-200">Locality of Identity</span>, applied through a convention
+          called <span className="text-zinc-200">Semantic Wayfinding</span>, so an AI agent finds the
+          right file with a single <code className="text-zinc-300">grep</code> instead of burning
+          tokens on detective work.
         </p>
 
         <div className="mt-8">
