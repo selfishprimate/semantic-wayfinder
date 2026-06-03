@@ -29,3 +29,6 @@ yarn-error.log*
 
 # Drafts (local-only)
 articles/
+
+# TS incremental build info
+*.tsbuildinfo

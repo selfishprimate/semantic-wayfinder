@@ -45,6 +45,8 @@ semantic-wayfinder/
 ├── cli/                                 ← CLI placeholder, not yet started
 ├── docs/conventions.md                  ← naming rules reference
 ├── examples/                            ← before.tsx, after.tsx, after-with-extracted-components.tsx, .wayfinder.json
+│   └── token-economics/                 ← simulate.py + README: reproducible model behind the article's Deney 2
+├── website/                             ← marketing/landing site (Vite + React + Tailwind + shadcn), deploys to Netlify
 ├── README.md
 ├── CONTRIBUTING.md
 ├── LICENSE
@@ -127,7 +129,9 @@ Wayfinder never removes utility classes, never reformats surrounding code, never
 
 ### Markdown is the entire implementation
 
-There's no parser, no AST traversal in code, no Node.js. The skill is just instructions; the agent reading it (Claude Code, Codex, Gemini) does the heavy lifting. This was intentional through the v0.x skill-only releases. The eventual CLI will introduce actual code — but that work hasn't started.
+There's no parser, no AST traversal in code, no Node.js **in the skill itself**. The skill is just instructions; the agent reading it (Claude Code, Codex, Gemini) does the heavy lifting. This was intentional through the v0.x skill-only releases. The eventual CLI will introduce actual code — but that work hasn't started.
+
+**Exception — the `website/` folder.** A marketing/landing site (Vite + React + TS + Tailwind + shadcn) now lives in `website/`. It has its own `package.json`, build step, and `node_modules` (all gitignored), and deploys to Netlify with base directory `website`. This is a *separate concern* from the skill: it does not affect how the skill is vendored (`curl` of a raw `SKILL.md` still works untouched), and the three `SKILL.md` files stay pure markdown. Keep the boundary clean — don't let web tooling leak into the skill files. The site's centerpiece is a client-side `js-tiktoken` demo of the token-economics comparison (mirrors `examples/token-economics/simulate.py`).
 
 ## Things explicitly *not* in scope for v0.x
 

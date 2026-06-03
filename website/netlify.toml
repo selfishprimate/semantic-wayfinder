@@ -1,0 +1,12 @@
+# Netlify config for the Semantic Wayfinder website.
+# In the Netlify UI set the site's "Base directory" to `website` so this file
+# and the build run from here.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
