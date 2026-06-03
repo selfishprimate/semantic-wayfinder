@@ -134,7 +134,7 @@ function Panel({
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-3">
+      <div className="flex items-center justify-between border-b border-white/[0.035] px-5 py-3">
         <span className="text-sm font-medium text-zinc-300">{title}</span>
         <span className={cn("font-mono text-lg font-semibold tabular-nums", accent)}>
           {running}
@@ -178,7 +178,7 @@ export default function DemoBody({ sim }: { sim: Sim }) {
     <div>
       {/* Two-cell split — panels spread across the halves, divided by a center
           rule; the page rails bound the outer edges. */}
-      <div className="grid grid-cols-1 divide-y divide-white/[0.07] border-b border-white/[0.07] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+      <div className="grid grid-cols-1 divide-y divide-white/[0.035] border-b border-white/[0.035] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
         <Panel title="Utility Classes Only" tone="utility" steps={util} revealed={revealedU} />
         <Panel title="Semantic Identity Classes" tone="semantic" steps={sem} revealed={revealedS} />
       </div>
@@ -196,7 +196,7 @@ export default function DemoBody({ sim }: { sim: Sim }) {
             </p>
             <table className="mt-5 w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.07] text-xs uppercase tracking-wide text-zinc-500">
+                <tr className="border-b border-white/[0.035] text-xs uppercase tracking-wide text-zinc-500">
                   <th className="py-2 pr-4 text-left font-medium">Metric (tokens)</th>
                   <th className="px-4 py-2 text-right font-medium text-amber-400">Utility</th>
                   <th className="px-4 py-2 text-right font-medium text-emerald-400">Semantic</th>
@@ -204,13 +204,13 @@ export default function DemoBody({ sim }: { sim: Sim }) {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-white/[0.04]">
+                <tr className="border-b border-white/[0.02]">
                   <td className="py-2.5 pr-4 text-zinc-300">Full loop</td>
                   <td className="px-4 py-2.5 text-right font-mono tabular-nums text-amber-400">{totalU}</td>
                   <td className="px-4 py-2.5 text-right font-mono tabular-nums text-emerald-400">{totalS}</td>
                   <td className="py-2.5 pl-4 text-right text-zinc-400">~{ratio}× · {savings}% saved</td>
                 </tr>
-                <tr className="border-b border-white/[0.04]">
+                <tr className="border-b border-white/[0.02]">
                   <td className="py-2.5 pr-4 text-zinc-300">
                     Detective tax <span className="text-zinc-600">(finding the file)</span>
                   </td>
