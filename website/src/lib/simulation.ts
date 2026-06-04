@@ -892,211 +892,795 @@ export const SCENARIOS: Scenario[] = [
   },
 ];
 
-// ── Entire-session demo: one developer building the checkout form ─────────────
-// A single coherent task — wiring up a payment/checkout form, one edit per turn.
-// Every turn touches the SAME component (CheckoutForm / "checkoutForm"), but the
-// utility loop has to re-run detective work each time because the grep term it
-// reaches for ("card", "input", "button"…) keeps colliding with other files.
-// The semantic loop greps "checkoutForm" and lands in one hit, every turn.
+// ── Entire-session demo: 20 realistic working sessions ────────────────────────
+// A real agent does NOT re-search for a file it's already editing. Within a
+// component, follow-up tweaks are free on BOTH sides — no grep, no re-read —
+// because the file is already in context. The gap only opens when the work moves
+// to a NEW part of the codebase: utility-only pays the detective tax at every
+// new target, while the semantic codebase lands in one grep. Each session below
+// is a coherent feature built across a few components, mixing "locate" turns
+// (a fresh component) with in-context "follow-up" turns. One is picked at random.
 
-export const SESSION: Scenario[] = [
-  {
-    promptUtil: "add a card number field to the checkout form",
-    promptSem: "add a card number field to the checkoutForm",
-    grepWord: "card",
-    className: "checkoutForm",
-    pageRefs: ['app/checkout/page.tsx:3:import CheckoutForm from "@/components/CheckoutForm";'],
-    decoys: [
-      {
-        path: "components/PricingCard.tsx",
-        name: "PricingCard",
-        tag: "div",
-        cls: "rounded-2xl border p-8",
-        body: ['<h3 className="text-lg font-semibold">Pro</h3>'],
-      },
-      {
-        path: "components/CardSkeleton.tsx",
-        name: "CardSkeleton",
-        tag: "div",
-        cls: "animate-pulse rounded-xl bg-zinc-100",
-        body: ['<div className="h-24 w-full" />'],
-      },
-    ],
-    target: {
-      path: "components/CheckoutForm.tsx",
-      name: "CheckoutForm",
-      tag: "form",
-      cls: "space-y-4 rounded-2xl border p-6",
-      body: [
-        '<h2 className="text-xl font-semibold">Checkout</h2>',
-        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Email" />',
-        '<button className="w-full rounded-lg bg-black py-3 text-white">Pay</button>',
-      ],
+export type SessionTurn =
+  | ({ kind: "locate" } & Scenario)
+  | {
+      // A follow-up on the file we're already editing — no class name needed,
+      // because the agent already has it in context.
+      kind: "followup";
+      prompt: string;
+      targetName: string;
+      edit: { label: string; payload: string };
+      doneMsg: string;
+    };
+
+// Compact builders so 20 sessions stay readable.
+function f(path: string, name: string, tag: string, cls: string, ...body: string[]): FileDef {
+  return { path, name, tag, cls, body };
+}
+function loc(
+  pu: string,
+  ps: string,
+  grep: string,
+  cls: string,
+  page: string,
+  decoys: FileDef[],
+  target: FileDef,
+  editLabel: string,
+  editPayload: string,
+  clarify: string,
+  reply: string,
+  done: string
+): SessionTurn {
+  return {
+    kind: "locate",
+    promptUtil: pu,
+    promptSem: ps,
+    grepWord: grep,
+    className: cls,
+    pageRefs: [page],
+    decoys,
+    target,
+    edit: { label: editLabel, payload: editPayload },
+    clarifyQ: clarify,
+    reply,
+    doneMsg: done,
+  };
+}
+function fu(
+  prompt: string,
+  targetName: string,
+  editLabel: string,
+  editPayload: string,
+  done: string
+): SessionTurn {
+  return { kind: "followup", prompt, targetName, edit: { label: editLabel, payload: editPayload }, doneMsg: done };
+}
+
+// Follow-up turn: one short, identical loop on both sides (request + ack + edit + done).
+function followupLoop(t: Extract<SessionTurn, { kind: "followup" }>): Step[] {
+  return [
+    { label: cap(t.prompt), content: cap(t.prompt), kind: "request", baseline: true },
+    {
+      label: `Assistant — "${t.targetName} is already open — applying it."`,
+      content: `${t.targetName} is already open from the last edit. Applying the change.`,
+      kind: "message",
+      baseline: true,
     },
-    edit: {
-      label: "Edit  CheckoutForm.tsx  (+ card number input)",
-      payload:
-        'CheckoutForm.tsx:\n+ <input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
-    },
-    clarifyQ: "There's a CheckoutForm, a PricingCard and a CardSkeleton. Which one?",
-    reply: "the CheckoutForm",
-    doneMsg: "Added a card number field to the CheckoutForm.",
-  },
-  {
-    promptUtil: "add expiry and CVC inputs to the checkout form",
-    promptSem: "add expiry and CVC inputs to the checkoutForm",
-    grepWord: "input",
-    className: "checkoutForm",
-    pageRefs: ['app/checkout/page.tsx:3:import CheckoutForm from "@/components/CheckoutForm";'],
-    decoys: [
-      {
-        path: "components/SearchInput.tsx",
-        name: "SearchInput",
-        tag: "div",
-        cls: "relative",
-        body: ['<input className="w-full rounded-full border px-4 py-2" placeholder="Search" />'],
-      },
-      {
-        path: "components/OtpInput.tsx",
-        name: "OtpInput",
-        tag: "div",
-        cls: "flex gap-2",
-        body: ['<input className="h-12 w-10 rounded border text-center" maxLength={1} />'],
-      },
-    ],
-    target: {
-      path: "components/CheckoutForm.tsx",
-      name: "CheckoutForm",
-      tag: "form",
-      cls: "space-y-4 rounded-2xl border p-6",
-      body: [
-        '<h2 className="text-xl font-semibold">Checkout</h2>',
-        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Email" />',
-        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
-        '<button className="w-full rounded-lg bg-black py-3 text-white">Pay</button>',
-      ],
-    },
-    edit: {
-      label: "Edit  CheckoutForm.tsx  (+ expiry / CVC row)",
-      payload:
-        'CheckoutForm.tsx:\n+ <div className="flex gap-3">\n+   <input className="w-full rounded-lg border px-3 py-2" placeholder="MM / YY" />\n+   <input className="w-full rounded-lg border px-3 py-2" placeholder="CVC" />\n+ </div>',
-    },
-    clarifyQ: "Several files have inputs — SearchInput, OtpInput, CheckoutForm. Which one?",
-    reply: "the CheckoutForm",
-    doneMsg: "Added expiry and CVC inputs to the CheckoutForm.",
-  },
-  {
-    promptUtil: "show the amount on the checkout pay button",
-    promptSem: "show the amount on the checkoutForm pay button",
-    grepWord: "button",
-    className: "checkoutForm",
-    pageRefs: ['app/checkout/page.tsx:3:import CheckoutForm from "@/components/CheckoutForm";'],
-    decoys: [
-      {
-        path: "components/IconButton.tsx",
-        name: "IconButton",
-        tag: "button",
-        cls: "rounded-full border p-2",
-        body: ["<Icon className=\"h-4 w-4\" />"],
-      },
-    ],
-    target: {
-      path: "components/CheckoutForm.tsx",
-      name: "CheckoutForm",
-      tag: "form",
-      cls: "space-y-4 rounded-2xl border p-6",
-      body: [
-        '<h2 className="text-xl font-semibold">Checkout</h2>',
-        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Email" />',
-        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
-        '<div className="flex gap-3">…expiry / CVC…</div>',
-        '<button className="w-full rounded-lg bg-black py-3 text-white">Pay</button>',
-      ],
-    },
-    edit: {
-      label: "Edit  CheckoutForm.tsx  (Pay → Pay $49)",
-      payload:
-        'CheckoutForm.tsx:\n- <button className="w-full rounded-lg bg-black py-3 text-white">Pay</button>\n+ <button className="w-full rounded-lg bg-black py-3 text-white">Pay $49</button>',
-    },
-    clarifyQ: "There's an IconButton and the CheckoutForm's button. Which one?",
-    reply: "the CheckoutForm",
-    doneMsg: "Put the amount on the CheckoutForm pay button.",
-  },
-  {
-    promptUtil: "add an inline error under the card field on checkout",
-    promptSem: "add an inline error to the checkoutForm",
-    grepWord: "error",
-    className: "checkoutForm",
-    pageRefs: ['app/checkout/page.tsx:3:import CheckoutForm from "@/components/CheckoutForm";'],
-    decoys: [
-      {
-        path: "components/ErrorBanner.tsx",
-        name: "ErrorBanner",
-        tag: "div",
-        cls: "rounded-lg bg-red-50 p-4 text-red-700",
-        body: ["{message}"],
-      },
-    ],
-    target: {
-      path: "components/CheckoutForm.tsx",
-      name: "CheckoutForm",
-      tag: "form",
-      cls: "space-y-4 rounded-2xl border p-6",
-      body: [
-        '<h2 className="text-xl font-semibold">Checkout</h2>',
-        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Email" />',
-        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
-        '<div className="flex gap-3">…expiry / CVC…</div>',
-        '<button className="w-full rounded-lg bg-black py-3 text-white">Pay $49</button>',
-      ],
-    },
-    edit: {
-      label: "Edit  CheckoutForm.tsx  (+ inline error)",
-      payload:
-        'CheckoutForm.tsx:\n+ {error && <p className="text-sm text-red-600">{error}</p>}',
-    },
-    clarifyQ: "There's an ErrorBanner component too. Inline in the CheckoutForm, or the banner?",
-    reply: "inline in the CheckoutForm",
-    doneMsg: "Added an inline error to the CheckoutForm.",
-  },
-  {
-    promptUtil: "make the heading on the checkout form bigger",
-    promptSem: "make the checkoutForm heading bigger",
-    grepWord: "checkout",
-    className: "checkoutForm",
-    pageRefs: [
+    { label: t.edit.label, content: t.edit.payload, kind: "edit", baseline: true },
+    { label: "Done", content: t.doneMsg, kind: "done", baseline: true },
+  ];
+}
+
+export function buildSessionTurn(t: SessionTurn): { util: Step[]; sem: Step[] } {
+  if (t.kind === "locate") return buildLoops(t);
+  const loop = followupLoop(t);
+  // Same work both sides — clone so each column animates independently.
+  return { util: loop, sem: loop.map((s) => ({ ...s })) };
+}
+
+export const SESSIONS: SessionTurn[][] = [
+  // 1 — Checkout flow
+  [
+    loc(
+      "add a card number field to the checkout form",
+      "add a card number field to the checkoutForm",
+      "card",
+      "checkoutForm",
       'app/checkout/page.tsx:3:import CheckoutForm from "@/components/CheckoutForm";',
-      'app/checkout/layout.tsx:1:export default function CheckoutLayout({ children }) {',
-    ],
-    decoys: [
-      {
-        path: "components/CheckoutSummary.tsx",
-        name: "CheckoutSummary",
-        tag: "aside",
-        cls: "rounded-2xl border p-6",
-        body: ['<h2 className="text-xl font-semibold">Order summary</h2>'],
-      },
-    ],
-    target: {
-      path: "components/CheckoutForm.tsx",
-      name: "CheckoutForm",
-      tag: "form",
-      cls: "space-y-4 rounded-2xl border p-6",
-      body: [
-        '<h2 className="text-xl font-semibold">Checkout</h2>',
-        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Email" />',
-        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
-        '<div className="flex gap-3">…expiry / CVC…</div>',
-        '<button className="w-full rounded-lg bg-black py-3 text-white">Pay $49</button>',
+      [
+        f("components/PricingCard.tsx", "PricingCard", "div", "rounded-2xl border p-8", '<h3 className="text-lg font-semibold">Pro</h3>'),
+        f("components/CardSkeleton.tsx", "CardSkeleton", "div", "animate-pulse rounded-xl bg-zinc-100", '<div className="h-24 w-full" />'),
       ],
-    },
-    edit: {
-      label: "Edit  CheckoutForm.tsx  (text-xl → text-2xl)",
-      payload:
-        'CheckoutForm.tsx:\n- <h2 className="text-xl font-semibold">Checkout</h2>\n+ <h2 className="text-2xl font-semibold">Checkout</h2>',
-    },
-    clarifyQ: "There's a CheckoutForm and a CheckoutSummary, both with headings. Which one?",
-    reply: "the CheckoutForm",
-    doneMsg: "Enlarged the CheckoutForm heading.",
-  },
+      f("components/CheckoutForm.tsx", "CheckoutForm", "form", "space-y-4 rounded-2xl border p-6", '<h2 className="text-xl font-semibold">Checkout</h2>', '<button className="w-full rounded-lg bg-black py-3 text-white">Pay</button>'),
+      "Edit  CheckoutForm.tsx  (+ card number input)",
+      'CheckoutForm.tsx:\n+ <input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
+      "There's a CheckoutForm, a PricingCard and a CardSkeleton. Which one?",
+      "the CheckoutForm",
+      "Added a card number field to the CheckoutForm."
+    ),
+    fu("now add expiry and CVC next to it", "CheckoutForm", "Edit  CheckoutForm.tsx  (+ expiry / CVC row)", 'CheckoutForm.tsx:\n+ <div className="flex gap-3"><input placeholder="MM / YY" /><input placeholder="CVC" /></div>', "Added expiry and CVC inputs."),
+    loc(
+      "show the tax line in the order summary",
+      "show the tax line in the orderSummary",
+      "summary",
+      "orderSummary",
+      'app/checkout/page.tsx:4:import OrderSummary from "@/components/OrderSummary";',
+      [
+        f("components/CartSummary.tsx", "CartSummary", "div", "rounded-xl border p-4", '<p className="text-sm">{itemCount} items</p>'),
+        f("components/SummaryCard.tsx", "SummaryCard", "div", "rounded-2xl bg-zinc-50 p-6", '<dl className="space-y-1">{rows}</dl>'),
+      ],
+      f("components/OrderSummary.tsx", "OrderSummary", "aside", "space-y-2 rounded-2xl border p-6", '<div className="flex justify-between"><span>Total</span><span>$49</span></div>'),
+      "Edit  OrderSummary.tsx  (+ tax line)",
+      'OrderSummary.tsx:\n+ <div className="flex justify-between"><span>Tax</span><span>$3.92</span></div>',
+      "There's an OrderSummary, a CartSummary and a SummaryCard. Which one?",
+      "the OrderSummary",
+      "Added the tax line to the OrderSummary."
+    ),
+    fu("round the total to two decimals", "OrderSummary", "Edit  OrderSummary.tsx  (format total)", 'OrderSummary.tsx:\n- <span>$49</span>\n+ <span>{total.toFixed(2)}</span>', "Formatted the total."),
+  ],
+  // 2 — Blog article page
+  [
+    loc(
+      "widen the line length on the article body",
+      "widen the line length on the articleBody",
+      "article",
+      "articleBody",
+      'app/blog/[slug]/page.tsx:5:import ArticleBody from "@/components/ArticleBody";',
+      [
+        f("components/ArticleMeta.tsx", "ArticleMeta", "div", "flex gap-3 text-sm text-zinc-500", "<span>{date}</span>"),
+        f("components/ArticleList.tsx", "ArticleList", "ul", "space-y-6", "{posts.map(renderRow)}"),
+      ],
+      f("components/ArticleBody.tsx", "ArticleBody", "article", "prose mx-auto max-w-2xl", "{children}"),
+      "Edit  ArticleBody.tsx  (max-w-2xl → max-w-3xl)",
+      'ArticleBody.tsx:\n- <article className="prose mx-auto max-w-2xl">\n+ <article className="prose mx-auto max-w-3xl">',
+      "There's an ArticleBody, an ArticleMeta and an ArticleList. Which one?",
+      "the ArticleBody",
+      "Widened the ArticleBody."
+    ),
+    fu("bump the base font a touch", "ArticleBody", "Edit  ArticleBody.tsx  (prose → prose-lg)", 'ArticleBody.tsx:\n- className="prose mx-auto max-w-3xl"\n+ className="prose prose-lg mx-auto max-w-3xl"', "Bumped the font size."),
+    loc(
+      "make the author avatar bigger in the author card",
+      "make the avatar bigger in the authorCard",
+      "author",
+      "authorCard",
+      'app/blog/[slug]/page.tsx:6:import AuthorCard from "@/components/AuthorCard";',
+      [f("components/AuthorBio.tsx", "AuthorBio", "p", "text-sm text-zinc-500", "{bio}")],
+      f("components/AuthorCard.tsx", "AuthorCard", "div", "flex items-center gap-3", '<img className="h-10 w-10 rounded-full" />'),
+      "Edit  AuthorCard.tsx  (h-10 → h-14)",
+      'AuthorCard.tsx:\n- <img className="h-10 w-10 rounded-full" />\n+ <img className="h-14 w-14 rounded-full" />',
+      "There's an AuthorCard and an AuthorBio. Which one?",
+      "the AuthorCard",
+      "Enlarged the AuthorCard avatar."
+    ),
+  ],
+  // 3 — Analytics dashboard
+  [
+    loc(
+      "tighten the gaps in the stats grid",
+      "tighten the gaps in the statsGrid",
+      "grid",
+      "statsGrid",
+      'app/dashboard/page.tsx:4:import StatsGrid from "@/components/StatsGrid";',
+      [
+        f("components/FeatureGrid.tsx", "FeatureGrid", "section", "px-6 py-20", "<div className=\"grid gap-8\">{features}</div>"),
+        f("components/ImageGrid.tsx", "ImageGrid", "div", "grid grid-cols-3 gap-2", "{photos.map(renderTile)}"),
+      ],
+      f("components/StatsGrid.tsx", "StatsGrid", "div", "grid gap-6 sm:grid-cols-4", "{stats.map(renderStat)}"),
+      "Edit  StatsGrid.tsx  (gap-6 → gap-4)",
+      'StatsGrid.tsx:\n- <div className="statsGrid grid gap-6 sm:grid-cols-4">\n+ <div className="statsGrid grid gap-4 sm:grid-cols-4">',
+      "There's a StatsGrid, a FeatureGrid and an ImageGrid. Which one?",
+      "the StatsGrid",
+      "Tightened the StatsGrid."
+    ),
+    fu("make it two columns on mobile", "StatsGrid", "Edit  StatsGrid.tsx  (+ grid-cols-2)", 'StatsGrid.tsx:\n- grid gap-4 sm:grid-cols-4\n+ grid grid-cols-2 gap-4 sm:grid-cols-4', "Made it two columns on mobile."),
+    loc(
+      "add a timestamp to each row in the activity feed",
+      "add a timestamp to the activityFeed rows",
+      "activity",
+      "activityFeed",
+      'app/dashboard/page.tsx:6:import ActivityFeed from "@/components/ActivityFeed";',
+      [f("components/ActivityChart.tsx", "ActivityChart", "div", "h-64", "<Line data={data} />")],
+      f("components/ActivityFeed.tsx", "ActivityFeed", "ul", "divide-y", "{events.map(renderEvent)}"),
+      "Edit  ActivityFeed.tsx  (+ timestamp)",
+      'ActivityFeed.tsx:\n+ <time className="text-xs text-zinc-500">{e.at}</time>',
+      "There's an ActivityFeed and an ActivityChart. Which one?",
+      "the ActivityFeed",
+      "Added timestamps to the ActivityFeed."
+    ),
+  ],
+  // 4 — Account settings
+  [
+    loc(
+      "make the save button full width on the profile form",
+      "make the save button full width on the profileForm",
+      "profile",
+      "profileForm",
+      'app/settings/page.tsx:3:import ProfileForm from "@/components/ProfileForm";',
+      [
+        f("components/ProfileHeader.tsx", "ProfileHeader", "header", "flex items-center gap-4", "<Avatar />"),
+        f("components/ProfileTabs.tsx", "ProfileTabs", "nav", "flex gap-4 border-b", "{tabs}"),
+      ],
+      f("components/ProfileForm.tsx", "ProfileForm", "form", "space-y-4", '<button className="rounded-lg bg-black px-4 py-2 text-white">Save</button>'),
+      "Edit  ProfileForm.tsx  (+ w-full on button)",
+      'ProfileForm.tsx:\n- <button className="rounded-lg bg-black px-4 py-2 text-white">Save</button>\n+ <button className="w-full rounded-lg bg-black px-4 py-2 text-white">Save</button>',
+      "There's a ProfileForm, a ProfileHeader and ProfileTabs. Which one?",
+      "the ProfileForm",
+      "Made the ProfileForm save button full width."
+    ),
+    fu("disable it until something changes", "ProfileForm", "Edit  ProfileForm.tsx  (+ disabled)", 'ProfileForm.tsx:\n+ disabled={!isDirty}', "Disabled the button until the form is dirty."),
+    loc(
+      "make the delete account button red in the danger zone",
+      "make the delete button red in the dangerZone",
+      "danger",
+      "dangerZone",
+      'app/settings/page.tsx:8:import DangerZone from "@/components/DangerZone";',
+      [f("components/DangerNote.tsx", "DangerNote", "p", "text-sm text-zinc-500", "{note}")],
+      f("components/DangerZone.tsx", "DangerZone", "section", "rounded-2xl border border-red-200 p-6", '<button className="rounded-lg border px-4 py-2">Delete account</button>'),
+      "Edit  DangerZone.tsx  (+ bg-red-600)",
+      'DangerZone.tsx:\n- <button className="rounded-lg border px-4 py-2">Delete account</button>\n+ <button className="rounded-lg bg-red-600 px-4 py-2 text-white">Delete account</button>',
+      "There's a DangerZone and a DangerNote. Which one?",
+      "the DangerZone",
+      "Made the DangerZone delete button red."
+    ),
+  ],
+  // 5 — Auth / login
+  [
+    loc(
+      "add a remember-me checkbox to the login form",
+      "add a remember-me checkbox to the loginForm",
+      "login",
+      "loginForm",
+      'app/login/page.tsx:2:import LoginForm from "@/components/LoginForm";',
+      [
+        f("components/LoginHero.tsx", "LoginHero", "div", "hidden lg:block", "<img src=\"/hero.jpg\" />"),
+        f("components/LogoutButton.tsx", "LogoutButton", "button", "text-sm text-zinc-500", "Sign out"),
+      ],
+      f("components/LoginForm.tsx", "LoginForm", "form", "space-y-4", '<input placeholder="Email" />', '<input type="password" />'),
+      "Edit  LoginForm.tsx  (+ remember-me)",
+      'LoginForm.tsx:\n+ <label className="flex gap-2 text-sm"><input type="checkbox" /> Remember me</label>',
+      "There's a LoginForm, a LoginHero and a LogoutButton. Which one?",
+      "the LoginForm",
+      "Added a remember-me checkbox to the LoginForm."
+    ),
+    fu("add a forgot-password link under it", "LoginForm", "Edit  LoginForm.tsx  (+ forgot link)", 'LoginForm.tsx:\n+ <a href="/reset" className="text-sm text-zinc-500">Forgot password?</a>', "Added a forgot-password link."),
+    loc(
+      "space out the social login buttons",
+      "space out the socialLogin buttons",
+      "social",
+      "socialLogin",
+      'app/login/page.tsx:3:import SocialLogin from "@/components/SocialLogin";',
+      [f("components/SocialShare.tsx", "SocialShare", "div", "flex gap-2", "<ShareIcons />")],
+      f("components/SocialLogin.tsx", "SocialLogin", "div", "flex gap-2", '<button>Google</button><button>GitHub</button>'),
+      "Edit  SocialLogin.tsx  (gap-2 → gap-3, stack)",
+      'SocialLogin.tsx:\n- <div className="socialLogin flex gap-2">\n+ <div className="socialLogin grid gap-3">',
+      "There's a SocialLogin and a SocialShare. Which one?",
+      "the SocialLogin",
+      "Spaced out the SocialLogin buttons."
+    ),
+  ],
+  // 6 — Pricing page
+  [
+    loc(
+      "highlight the popular plan in the pricing table",
+      "highlight the popular plan in the pricingTable",
+      "pricing",
+      "pricingTable",
+      'app/pricing/page.tsx:2:import PricingTable from "@/components/PricingTable";',
+      [
+        f("components/PricingFaq.tsx", "PricingFaq", "section", "px-6 py-16", '<h2>Pricing FAQ</h2>'),
+        f("components/PricingHero.tsx", "PricingHero", "header", "py-20 text-center", "<h1>Plans</h1>"),
+      ],
+      f("components/PricingTable.tsx", "PricingTable", "div", "grid gap-6 sm:grid-cols-3", "{plans.map(renderPlan)}"),
+      "Edit  PricingTable.tsx  (+ ring on popular)",
+      'PricingTable.tsx:\n+ className={p.popular ? "ring-2 ring-black" : ""}',
+      "There's a PricingTable, a PricingFaq and a PricingHero. Which one?",
+      "the PricingTable",
+      "Highlighted the popular plan in the PricingTable."
+    ),
+    fu("add a Most Popular badge to it", "PricingTable", "Edit  PricingTable.tsx  (+ badge)", 'PricingTable.tsx:\n+ {p.popular && <span className="rounded-full bg-black px-2 text-xs text-white">Most Popular</span>}', "Added a Most Popular badge."),
+    loc(
+      "add more spacing between the FAQ items",
+      "add spacing to the faqAccordion",
+      "accordion",
+      "faqAccordion",
+      'app/pricing/page.tsx:4:import FaqAccordion from "@/components/FaqAccordion";',
+      [f("components/MobileAccordion.tsx", "MobileAccordion", "div", "divide-y", "<details><summary>Menu</summary></details>")],
+      f("components/FaqAccordion.tsx", "FaqAccordion", "div", "space-y-2", '<details className="rounded-lg border p-4"><summary>Can I cancel?</summary></details>'),
+      "Edit  FaqAccordion.tsx  (space-y-2 → space-y-4)",
+      'FaqAccordion.tsx:\n- <div className="faqAccordion space-y-2">\n+ <div className="faqAccordion space-y-4">',
+      "There's a FaqAccordion and a MobileAccordion. Which one?",
+      "the FaqAccordion",
+      "Spaced out the FaqAccordion."
+    ),
+  ],
+  // 7 — Search experience
+  [
+    loc(
+      "add a clear button to the search bar",
+      "add a clear button to the searchBar",
+      "search",
+      "searchBar",
+      'app/search/page.tsx:2:import SearchBar from "@/components/SearchBar";',
+      [
+        f("components/SearchFilters.tsx", "SearchFilters", "aside", "w-56 space-y-3", "{facets}"),
+        f("components/SearchHistory.tsx", "SearchHistory", "ul", "text-sm", "{recent.map(renderItem)}"),
+      ],
+      f("components/SearchBar.tsx", "SearchBar", "div", "relative", '<input className="w-full rounded-full border px-4 py-2" />'),
+      "Edit  SearchBar.tsx  (+ clear button)",
+      'SearchBar.tsx:\n+ <button className="absolute right-3 top-2" onClick={clear}>×</button>',
+      "There's a SearchBar, SearchFilters and SearchHistory. Which one?",
+      "the SearchBar",
+      "Added a clear button to the SearchBar."
+    ),
+    fu("only show it when there's text", "SearchBar", "Edit  SearchBar.tsx  (conditional clear)", 'SearchBar.tsx:\n+ {query && <button onClick={clear}>×</button>}', "Showed the clear button only when there's text."),
+    loc(
+      "add empty-state text to the results list",
+      "add an empty state to the resultsList",
+      "results",
+      "resultsList",
+      'app/search/page.tsx:5:import ResultsList from "@/components/ResultsList";',
+      [f("components/ResultsCount.tsx", "ResultsCount", "p", "text-sm text-zinc-500", "{count} results")],
+      f("components/ResultsList.tsx", "ResultsList", "ul", "space-y-4", "{hits.map(renderHit)}"),
+      "Edit  ResultsList.tsx  (+ empty state)",
+      'ResultsList.tsx:\n+ {hits.length === 0 && <p className="text-zinc-500">No results found.</p>}',
+      "There's a ResultsList and a ResultsCount. Which one?",
+      "the ResultsList",
+      "Added an empty state to the ResultsList."
+    ),
+  ],
+  // 8 — Notifications
+  [
+    loc(
+      "mark unread rows in the notification list",
+      "mark unread rows in the notificationList",
+      "notification",
+      "notificationList",
+      'app/inbox/page.tsx:3:import NotificationList from "@/components/NotificationList";',
+      [
+        f("components/NotificationBell.tsx", "NotificationBell", "button", "relative", "<BellIcon />"),
+        f("components/NotificationToast.tsx", "NotificationToast", "div", "fixed bottom-4 right-4", "{message}"),
+      ],
+      f("components/NotificationList.tsx", "NotificationList", "ul", "divide-y", "{items.map(renderItem)}"),
+      "Edit  NotificationList.tsx  (+ unread bg)",
+      'NotificationList.tsx:\n+ className={n.read ? "" : "bg-blue-50"}',
+      "There's a NotificationList, a NotificationBell and a NotificationToast. Which one?",
+      "the NotificationList",
+      "Marked unread rows in the NotificationList."
+    ),
+    fu("add a mark-all-read button at the top", "NotificationList", "Edit  NotificationList.tsx  (+ mark all)", 'NotificationList.tsx:\n+ <button onClick={markAll}>Mark all read</button>', "Added a mark-all-read button."),
+    loc(
+      "add a count badge to the bell",
+      "add a count badge to the notificationBell",
+      "bell",
+      "notificationBell",
+      'components/AppShell.tsx:7:import NotificationBell from "@/components/NotificationBell";',
+      [f("components/DinnerBell.tsx", "DinnerBell", "span", "text-2xl", "🔔")],
+      f("components/NotificationBell.tsx", "NotificationBell", "button", "relative", "<BellIcon />"),
+      "Edit  NotificationBell.tsx  (+ count badge)",
+      'NotificationBell.tsx:\n+ {count > 0 && <span className="absolute -top-1 -right-1 rounded-full bg-red-500 px-1 text-xs text-white">{count}</span>}',
+      "There's a NotificationBell and a DinnerBell. Which one?",
+      "the NotificationBell",
+      "Added a count badge to the NotificationBell."
+    ),
+  ],
+  // 9 — Product detail page
+  [
+    loc(
+      "add thumbnails under the product gallery",
+      "add thumbnails to the productGallery",
+      "gallery",
+      "productGallery",
+      'app/products/[id]/page.tsx:4:import ProductGallery from "@/components/ProductGallery";',
+      [
+        f("components/PhotoGallery.tsx", "PhotoGallery", "div", "columns-3", "{photos.map(renderPhoto)}"),
+        f("components/GalleryModal.tsx", "GalleryModal", "div", "fixed inset-0", "<img src={active} />"),
+      ],
+      f("components/ProductGallery.tsx", "ProductGallery", "div", "space-y-3", '<img className="aspect-square w-full rounded-xl" />'),
+      "Edit  ProductGallery.tsx  (+ thumbnail row)",
+      'ProductGallery.tsx:\n+ <div className="flex gap-2">{images.map(renderThumb)}</div>',
+      "There's a ProductGallery, a PhotoGallery and a GalleryModal. Which one?",
+      "the ProductGallery",
+      "Added thumbnails to the ProductGallery."
+    ),
+    fu("highlight the selected thumbnail", "ProductGallery", "Edit  ProductGallery.tsx  (selected ring)", 'ProductGallery.tsx:\n+ className={i === active ? "ring-2 ring-black" : ""}', "Highlighted the selected thumbnail."),
+    loc(
+      "make the add-to-cart bar sticky on mobile",
+      "make the addToCartBar sticky on mobile",
+      "cart",
+      "addToCartBar",
+      'app/products/[id]/page.tsx:6:import AddToCartBar from "@/components/AddToCartBar";',
+      [f("components/CartDrawer.tsx", "CartDrawer", "aside", "fixed right-0 top-0 h-full w-80", "{lines}")],
+      f("components/AddToCartBar.tsx", "AddToCartBar", "div", "flex items-center justify-between border-t p-4", '<button className="rounded-lg bg-black px-6 py-2 text-white">Add to cart</button>'),
+      "Edit  AddToCartBar.tsx  (+ sticky bottom)",
+      'AddToCartBar.tsx:\n- <div className="addToCartBar flex items-center justify-between border-t p-4">\n+ <div className="addToCartBar sticky bottom-0 flex items-center justify-between border-t bg-white p-4">',
+      "There's an AddToCartBar and a CartDrawer. Which one?",
+      "the AddToCartBar",
+      "Made the AddToCartBar sticky."
+    ),
+  ],
+  // 10 — Public profile
+  [
+    loc(
+      "add a cover image to the profile header",
+      "add a cover image to the profileHeader",
+      "profile",
+      "profileHeader",
+      'app/u/[handle]/page.tsx:3:import ProfileHeader from "@/components/ProfileHeader";',
+      [
+        f("components/ProfileStats.tsx", "ProfileStats", "div", "flex gap-6", "{stats}"),
+        f("components/ProfileFeed.tsx", "ProfileFeed", "ul", "space-y-4", "{posts.map(renderPost)}"),
+      ],
+      f("components/ProfileHeader.tsx", "ProfileHeader", "header", "flex items-center gap-4 p-6", "<Avatar size={64} />"),
+      "Edit  ProfileHeader.tsx  (+ cover image)",
+      'ProfileHeader.tsx:\n+ <img className="h-32 w-full object-cover" src={cover} />',
+      "There's a ProfileHeader, ProfileStats and a ProfileFeed. Which one?",
+      "the ProfileHeader",
+      "Added a cover image to the ProfileHeader."
+    ),
+    fu("pull the avatar up over the cover", "ProfileHeader", "Edit  ProfileHeader.tsx  (-mt on avatar)", 'ProfileHeader.tsx:\n+ <Avatar className="-mt-8 ring-4 ring-white" />', "Pulled the avatar over the cover."),
+    loc(
+      "swap the follow button to an outline style",
+      "restyle the followButton to outline",
+      "follow",
+      "followButton",
+      'app/u/[handle]/page.tsx:5:import FollowButton from "@/components/FollowButton";',
+      [f("components/FollowList.tsx", "FollowList", "ul", "space-y-2", "{users.map(renderUser)}")],
+      f("components/FollowButton.tsx", "FollowButton", "button", "rounded-full bg-black px-4 py-1 text-white", "Follow"),
+      "Edit  FollowButton.tsx  (solid → outline)",
+      'FollowButton.tsx:\n- <button className="followButton rounded-full bg-black px-4 py-1 text-white">\n+ <button className="followButton rounded-full border px-4 py-1">',
+      "There's a FollowButton and a FollowList. Which one?",
+      "the FollowButton",
+      "Restyled the FollowButton."
+    ),
+  ],
+  // 11 — Comments thread
+  [
+    loc(
+      "indent replies in the comment list",
+      "indent replies in the commentList",
+      "comment",
+      "commentList",
+      'app/post/[id]/page.tsx:7:import CommentList from "@/components/CommentList";',
+      [
+        f("components/CommentForm.tsx", "CommentForm", "form", "flex gap-2", '<textarea />'),
+        f("components/CommentSort.tsx", "CommentSort", "select", "text-sm", "<option>Top</option>"),
+      ],
+      f("components/CommentList.tsx", "CommentList", "ul", "space-y-4", "{comments.map(renderComment)}"),
+      "Edit  CommentList.tsx  (+ reply indent)",
+      'CommentList.tsx:\n+ className={c.parentId ? "ml-8" : ""}',
+      "There's a CommentList, a CommentForm and a CommentSort. Which one?",
+      "the CommentList",
+      "Indented replies in the CommentList."
+    ),
+    fu("collapse threads past depth 3", "CommentList", "Edit  CommentList.tsx  (collapse deep)", 'CommentList.tsx:\n+ {depth > 3 && <button>Show more replies</button>}', "Collapsed deep threads."),
+    loc(
+      "grow the comment box as you type",
+      "auto-grow the commentForm textarea",
+      "comment",
+      "commentForm",
+      'app/post/[id]/page.tsx:8:import CommentForm from "@/components/CommentForm";',
+      [f("components/CommentList.tsx", "CommentList", "ul", "space-y-4", "{comments.map(renderComment)}")],
+      f("components/CommentForm.tsx", "CommentForm", "form", "flex gap-2", '<textarea className="w-full rounded border p-2" />'),
+      "Edit  CommentForm.tsx  (+ auto-grow)",
+      'CommentForm.tsx:\n+ <textarea rows={1} onInput={autoGrow} className="w-full rounded border p-2" />',
+      "There's a CommentForm and a CommentList. Which one?",
+      "the CommentForm",
+      "Made the CommentForm textarea auto-grow."
+    ),
+  ],
+  // 12 — Site chrome / navigation
+  [
+    loc(
+      "make the site header shrink on scroll",
+      "make the siteHeader shrink on scroll",
+      "header",
+      "siteHeader",
+      'app/layout.tsx:6:import SiteHeader from "@/components/SiteHeader";',
+      [
+        f("components/SectionHeader.tsx", "SectionHeader", "div", "mb-6", "<h2>{title}</h2>"),
+        f("components/TableHeader.tsx", "TableHeader", "thead", "bg-zinc-50", "<tr>{cols}</tr>"),
+      ],
+      f("components/SiteHeader.tsx", "SiteHeader", "header", "flex h-16 items-center px-6", "<Logo /><MainNav />"),
+      "Edit  SiteHeader.tsx  (+ scroll shrink)",
+      'SiteHeader.tsx:\n+ className={scrolled ? "h-12" : "h-16"}',
+      "There's a SiteHeader, a SectionHeader and a TableHeader. Which one?",
+      "the SiteHeader",
+      "Made the SiteHeader shrink on scroll."
+    ),
+    fu("add a subtle shadow once shrunk", "SiteHeader", "Edit  SiteHeader.tsx  (+ shadow)", 'SiteHeader.tsx:\n+ className={scrolled ? "h-12 shadow-sm" : "h-16"}', "Added a shadow on scroll."),
+    loc(
+      "close the mobile menu when a link is tapped",
+      "close the mobileMenu on link tap",
+      "menu",
+      "mobileMenu",
+      'components/SiteHeader.tsx:4:import MobileMenu from "@/components/MobileMenu";',
+      [f("components/ContextMenu.tsx", "ContextMenu", "div", "absolute rounded-lg border bg-white", "{items}")],
+      f("components/MobileMenu.tsx", "MobileMenu", "nav", "fixed inset-0 bg-white p-6", "{links.map(renderLink)}"),
+      "Edit  MobileMenu.tsx  (+ close on click)",
+      'MobileMenu.tsx:\n+ onClick={() => setOpen(false)}',
+      "There's a MobileMenu and a ContextMenu. Which one?",
+      "the MobileMenu",
+      "Closed the MobileMenu on link tap."
+    ),
+  ],
+  // 13 — Footer + newsletter
+  [
+    loc(
+      "stack the footer columns on mobile",
+      "stack the siteFooter columns on mobile",
+      "footer",
+      "siteFooter",
+      'app/layout.tsx:9:import SiteFooter from "@/components/SiteFooter";',
+      [
+        f("components/PageFooter.tsx", "PageFooter", "div", "border-t py-4 text-center", "<small>{year}</small>"),
+        f("components/StickyFooter.tsx", "StickyFooter", "div", "fixed bottom-0 w-full", "{cta}"),
+      ],
+      f("components/SiteFooter.tsx", "SiteFooter", "footer", "grid grid-cols-4 gap-8 px-6 py-12", "{columns.map(renderCol)}"),
+      "Edit  SiteFooter.tsx  (responsive cols)",
+      'SiteFooter.tsx:\n- <footer className="siteFooter grid grid-cols-4 gap-8 px-6 py-12">\n+ <footer className="siteFooter grid grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-4">',
+      "There's a SiteFooter, a PageFooter and a StickyFooter. Which one?",
+      "the SiteFooter",
+      "Stacked the SiteFooter columns on mobile."
+    ),
+    fu("shrink the gap on mobile too", "SiteFooter", "Edit  SiteFooter.tsx  (gap-8 → gap-6)", 'SiteFooter.tsx:\n- grid-cols-2 gap-8 px-6\n+ grid-cols-2 gap-6 px-6', "Shrank the mobile gap."),
+    loc(
+      "inline the newsletter input and button",
+      "inline the newsletterForm input and button",
+      "newsletter",
+      "newsletterForm",
+      'components/SiteFooter.tsx:3:import NewsletterForm from "@/components/NewsletterForm";',
+      [f("components/NewsletterBanner.tsx", "NewsletterBanner", "div", "bg-zinc-900 p-8 text-white", "<h3>Subscribe</h3>")],
+      f("components/NewsletterForm.tsx", "NewsletterForm", "form", "space-y-2", '<input placeholder="Email" /><button>Join</button>'),
+      "Edit  NewsletterForm.tsx  (stack → inline)",
+      'NewsletterForm.tsx:\n- <form className="newsletterForm space-y-2">\n+ <form className="newsletterForm flex gap-2">',
+      "There's a NewsletterForm and a NewsletterBanner. Which one?",
+      "the NewsletterForm",
+      "Inlined the NewsletterForm."
+    ),
+  ],
+  // 14 — Onboarding wizard
+  [
+    loc(
+      "add a back button to the step wizard",
+      "add a back button to the stepWizard",
+      "step",
+      "stepWizard",
+      'app/onboarding/page.tsx:2:import StepWizard from "@/components/StepWizard";',
+      [
+        f("components/StepList.tsx", "StepList", "ol", "space-y-2", "{steps.map(renderStep)}"),
+        f("components/StepDots.tsx", "StepDots", "div", "flex gap-1", "{dots}"),
+      ],
+      f("components/StepWizard.tsx", "StepWizard", "div", "space-y-6", "{renderCurrentStep()}<button>Next</button>"),
+      "Edit  StepWizard.tsx  (+ back button)",
+      'StepWizard.tsx:\n+ <button onClick={prev} disabled={step === 0}>Back</button>',
+      "There's a StepWizard, a StepList and StepDots. Which one?",
+      "the StepWizard",
+      "Added a back button to the StepWizard."
+    ),
+    fu("hide Next on the last step", "StepWizard", "Edit  StepWizard.tsx  (conditional Next)", 'StepWizard.tsx:\n+ {!isLast && <button onClick={next}>Next</button>}', "Hid Next on the last step."),
+    loc(
+      "animate the progress bar fill",
+      "animate the progressBar fill",
+      "progress",
+      "progressBar",
+      'components/StepWizard.tsx:3:import ProgressBar from "@/components/ProgressBar";',
+      [f("components/ProgressRing.tsx", "ProgressRing", "svg", "h-10 w-10", "<circle />")],
+      f("components/ProgressBar.tsx", "ProgressBar", "div", "h-2 w-full rounded-full bg-zinc-200", '<div className="h-full rounded-full bg-black" style={{ width }} />'),
+      "Edit  ProgressBar.tsx  (+ transition)",
+      'ProgressBar.tsx:\n- <div className="h-full rounded-full bg-black" style={{ width }} />\n+ <div className="h-full rounded-full bg-black transition-all" style={{ width }} />',
+      "There's a ProgressBar and a ProgressRing. Which one?",
+      "the ProgressBar",
+      "Animated the ProgressBar fill."
+    ),
+  ],
+  // 15 — Calendar
+  [
+    loc(
+      "highlight today in the calendar grid",
+      "highlight today in the calendarGrid",
+      "calendar",
+      "calendarGrid",
+      'app/calendar/page.tsx:3:import CalendarGrid from "@/components/CalendarGrid";',
+      [
+        f("components/CalendarHeader.tsx", "CalendarHeader", "div", "flex justify-between", "<MonthNav />"),
+        f("components/MiniCalendar.tsx", "MiniCalendar", "div", "grid grid-cols-7 text-xs", "{days}"),
+      ],
+      f("components/CalendarGrid.tsx", "CalendarGrid", "div", "grid grid-cols-7 gap-px", "{days.map(renderDay)}"),
+      "Edit  CalendarGrid.tsx  (+ today ring)",
+      'CalendarGrid.tsx:\n+ className={isToday(d) ? "ring-2 ring-black" : ""}',
+      "There's a CalendarGrid, a CalendarHeader and a MiniCalendar. Which one?",
+      "the CalendarGrid",
+      "Highlighted today in the CalendarGrid."
+    ),
+    fu("dim days outside this month", "CalendarGrid", "Edit  CalendarGrid.tsx  (dim outside)", 'CalendarGrid.tsx:\n+ className={d.outside ? "text-zinc-300" : ""}', "Dimmed days outside the month."),
+    loc(
+      "make the event modal wider",
+      "make the eventModal wider",
+      "modal",
+      "eventModal",
+      'components/CalendarGrid.tsx:4:import EventModal from "@/components/EventModal";',
+      [f("components/ConfirmModal.tsx", "ConfirmModal", "div", "max-w-sm rounded-2xl bg-white p-6", "{message}")],
+      f("components/EventModal.tsx", "EventModal", "div", "max-w-md rounded-2xl bg-white p-6", "<EventForm />"),
+      "Edit  EventModal.tsx  (max-w-md → max-w-lg)",
+      'EventModal.tsx:\n- <div className="eventModal max-w-md rounded-2xl bg-white p-6">\n+ <div className="eventModal max-w-lg rounded-2xl bg-white p-6">',
+      "There's an EventModal and a ConfirmModal. Which one?",
+      "the EventModal",
+      "Widened the EventModal."
+    ),
+  ],
+  // 16 — Chat
+  [
+    loc(
+      "show avatars next to each message in the message list",
+      "show avatars in the messageList",
+      "message",
+      "messageList",
+      'app/chat/page.tsx:4:import MessageList from "@/components/MessageList";',
+      [
+        f("components/MessageBubble.tsx", "MessageBubble", "div", "rounded-2xl px-3 py-2", "{text}"),
+        f("components/MessageInput.tsx", "MessageInput", "form", "flex gap-2", "<input />"),
+      ],
+      f("components/MessageList.tsx", "MessageList", "div", "flex flex-col gap-2 overflow-y-auto", "{messages.map(renderMessage)}"),
+      "Edit  MessageList.tsx  (+ avatar)",
+      'MessageList.tsx:\n+ <img className="h-6 w-6 rounded-full" src={m.author.avatar} />',
+      "There's a MessageList, a MessageBubble and a MessageInput. Which one?",
+      "the MessageList",
+      "Added avatars to the MessageList."
+    ),
+    fu("group consecutive messages from the same person", "MessageList", "Edit  MessageList.tsx  (group runs)", 'MessageList.tsx:\n+ {sameAuthorAsPrev ? null : <img ... />}', "Grouped consecutive messages."),
+    loc(
+      "send the composer on Enter",
+      "send the composer on Enter",
+      "composer",
+      "composer",
+      'app/chat/page.tsx:6:import Composer from "@/components/Composer";',
+      [f("components/EmojiPicker.tsx", "EmojiPicker", "div", "grid grid-cols-8", "{emojis}")],
+      f("components/Composer.tsx", "Composer", "form", "flex gap-2 border-t p-3", '<textarea className="flex-1" />'),
+      "Edit  Composer.tsx  (+ Enter to send)",
+      'Composer.tsx:\n+ onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}',
+      "There's a Composer and an EmojiPicker. Which one?",
+      "the Composer",
+      "Made the Composer send on Enter."
+    ),
+  ],
+  // 17 — Admin users table
+  [
+    loc(
+      "make the header row sticky on the users table",
+      "make the header sticky on the usersTable",
+      "table",
+      "usersTable",
+      'app/admin/users/page.tsx:3:import UsersTable from "@/components/UsersTable";',
+      [
+        f("components/UsersGrid.tsx", "UsersGrid", "div", "grid gap-4 sm:grid-cols-3", "{users.map(renderCard)}"),
+        f("components/RolesTable.tsx", "RolesTable", "table", "w-full", "<tbody>{roles}</tbody>"),
+      ],
+      f("components/UsersTable.tsx", "UsersTable", "table", "w-full text-sm", "<thead><tr>{cols}</tr></thead>"),
+      "Edit  UsersTable.tsx  (+ sticky head)",
+      'UsersTable.tsx:\n+ <thead className="sticky top-0 bg-white">',
+      "There's a UsersTable, a UsersGrid and a RolesTable. Which one?",
+      "the UsersTable",
+      "Made the UsersTable header sticky."
+    ),
+    fu("zebra-stripe the rows", "UsersTable", "Edit  UsersTable.tsx  (+ odd:bg)", 'UsersTable.tsx:\n+ className="odd:bg-zinc-50"', "Zebra-striped the rows."),
+    loc(
+      "add a search input to the filter bar",
+      "add a search input to the filterBar",
+      "filter",
+      "filterBar",
+      'app/admin/users/page.tsx:5:import FilterBar from "@/components/FilterBar";',
+      [f("components/FilterChips.tsx", "FilterChips", "div", "flex gap-2", "{chips}")],
+      f("components/FilterBar.tsx", "FilterBar", "div", "flex items-center gap-3 border-b p-3", "<RoleSelect />"),
+      "Edit  FilterBar.tsx  (+ search input)",
+      'FilterBar.tsx:\n+ <input className="rounded-lg border px-3 py-1" placeholder="Search users" />',
+      "There's a FilterBar and FilterChips. Which one?",
+      "the FilterBar",
+      "Added a search input to the FilterBar."
+    ),
+  ],
+  // 18 — Media player
+  [
+    loc(
+      "add a fullscreen button to the video player",
+      "add a fullscreen button to the videoPlayer",
+      "player",
+      "videoPlayer",
+      'app/watch/[id]/page.tsx:3:import VideoPlayer from "@/components/VideoPlayer";',
+      [
+        f("components/AudioPlayer.tsx", "AudioPlayer", "div", "flex items-center gap-3", "<PlayButton />"),
+        f("components/PlayerControls.tsx", "PlayerControls", "div", "flex gap-2", "<Scrubber />"),
+      ],
+      f("components/VideoPlayer.tsx", "VideoPlayer", "div", "relative aspect-video bg-black", "<video src={src} />"),
+      "Edit  VideoPlayer.tsx  (+ fullscreen)",
+      'VideoPlayer.tsx:\n+ <button onClick={requestFullscreen}>⤢</button>',
+      "There's a VideoPlayer, an AudioPlayer and PlayerControls. Which one?",
+      "the VideoPlayer",
+      "Added a fullscreen button to the VideoPlayer."
+    ),
+    fu("auto-hide the controls after 3s", "VideoPlayer", "Edit  VideoPlayer.tsx  (auto-hide)", 'VideoPlayer.tsx:\n+ className={idle ? "opacity-0 transition-opacity" : ""}', "Auto-hid the controls."),
+    loc(
+      "highlight the now-playing item in the playlist",
+      "highlight the active item in the playlistSidebar",
+      "playlist",
+      "playlistSidebar",
+      'app/watch/[id]/page.tsx:5:import PlaylistSidebar from "@/components/PlaylistSidebar";',
+      [f("components/PlaylistCard.tsx", "PlaylistCard", "div", "rounded-xl border p-3", "{title}")],
+      f("components/PlaylistSidebar.tsx", "PlaylistSidebar", "aside", "w-72 space-y-2 overflow-y-auto", "{items.map(renderItem)}"),
+      "Edit  PlaylistSidebar.tsx  (+ active row)",
+      'PlaylistSidebar.tsx:\n+ className={i.id === currentId ? "bg-zinc-100" : ""}',
+      "There's a PlaylistSidebar and a PlaylistCard. Which one?",
+      "the PlaylistSidebar",
+      "Highlighted the now-playing item."
+    ),
+  ],
+  // 19 — Contact page
+  [
+    loc(
+      "add a subject field to the contact form",
+      "add a subject field to the contactForm",
+      "contact",
+      "contactForm",
+      'app/contact/page.tsx:2:import ContactForm from "@/components/ContactForm";',
+      [
+        f("components/ContactInfo.tsx", "ContactInfo", "div", "space-y-1 text-sm", "<p>{email}</p>"),
+        f("components/ContactCard.tsx", "ContactCard", "div", "rounded-xl border p-4", "{person}"),
+      ],
+      f("components/ContactForm.tsx", "ContactForm", "form", "space-y-4", '<input placeholder="Name" /><textarea placeholder="Message" />'),
+      "Edit  ContactForm.tsx  (+ subject field)",
+      'ContactForm.tsx:\n+ <input className="w-full rounded-lg border px-3 py-2" placeholder="Subject" />',
+      "There's a ContactForm, ContactInfo and a ContactCard. Which one?",
+      "the ContactForm",
+      "Added a subject field to the ContactForm."
+    ),
+    fu("make the message box taller", "ContactForm", "Edit  ContactForm.tsx  (rows=6)", 'ContactForm.tsx:\n+ <textarea rows={6} placeholder="Message" />', "Made the message box taller."),
+    loc(
+      "round the corners on the map embed",
+      "round the corners on the mapEmbed",
+      "map",
+      "mapEmbed",
+      'app/contact/page.tsx:4:import MapEmbed from "@/components/MapEmbed";',
+      [f("components/Sitemap.tsx", "Sitemap", "nav", "columns-3 text-sm", "{links}")],
+      f("components/MapEmbed.tsx", "MapEmbed", "div", "h-64 w-full overflow-hidden", "<iframe src={mapUrl} />"),
+      "Edit  MapEmbed.tsx  (+ rounded-2xl)",
+      'MapEmbed.tsx:\n- <div className="mapEmbed h-64 w-full overflow-hidden">\n+ <div className="mapEmbed h-64 w-full overflow-hidden rounded-2xl">',
+      "There's a MapEmbed and a Sitemap. Which one?",
+      "the MapEmbed",
+      "Rounded the MapEmbed corners."
+    ),
+  ],
+  // 20 — Kanban board
+  [
+    loc(
+      "add a card count to each board column",
+      "add a card count to the boardColumn",
+      "column",
+      "boardColumn",
+      'app/board/page.tsx:3:import BoardColumn from "@/components/BoardColumn";',
+      [
+        f("components/BoardHeader.tsx", "BoardHeader", "div", "flex justify-between p-4", "<h1>Board</h1>"),
+        f("components/TableColumn.tsx", "TableColumn", "th", "px-3 py-2 text-left", "{label}"),
+      ],
+      f("components/BoardColumn.tsx", "BoardColumn", "div", "w-72 shrink-0 space-y-2 rounded-xl bg-zinc-50 p-3", "<h3>{title}</h3>{cards.map(renderCard)}"),
+      "Edit  BoardColumn.tsx  (+ count)",
+      'BoardColumn.tsx:\n+ <span className="text-xs text-zinc-500">{cards.length}</span>',
+      "There's a BoardColumn, a BoardHeader and a TableColumn. Which one?",
+      "the BoardColumn",
+      "Added a card count to the BoardColumn."
+    ),
+    fu("show an add-card button at the bottom", "BoardColumn", "Edit  BoardColumn.tsx  (+ add card)", 'BoardColumn.tsx:\n+ <button className="w-full text-left text-sm text-zinc-500">+ Add a card</button>', "Added an add-card button."),
+    loc(
+      "make the card modal close on backdrop click",
+      "close the cardModal on backdrop click",
+      "modal",
+      "cardModal",
+      'components/BoardColumn.tsx:5:import CardModal from "@/components/CardModal";',
+      [f("components/ImageModal.tsx", "ImageModal", "div", "fixed inset-0 grid place-items-center", "<img src={src} />")],
+      f("components/CardModal.tsx", "CardModal", "div", "fixed inset-0 grid place-items-center bg-black/40", '<div className="w-lg rounded-2xl bg-white p-6">{card}</div>'),
+      "Edit  CardModal.tsx  (+ backdrop close)",
+      'CardModal.tsx:\n+ <div className="cardModal fixed inset-0 ... bg-black/40" onClick={onClose}>',
+      "There's a CardModal and an ImageModal. Which one?",
+      "the CardModal",
+      "Closed the CardModal on backdrop click."
+    ),
+  ],
 ];

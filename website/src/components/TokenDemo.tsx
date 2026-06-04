@@ -3,7 +3,7 @@ import { Tiktoken } from "js-tiktoken/lite";
 import { Check, Loader2, Play, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { SCENARIOS, SESSION, buildLoops, type Step } from "@/lib/simulation";
+import { SCENARIOS, SESSIONS, buildLoops, buildSessionTurn, type Step } from "@/lib/simulation";
 
 interface CountedStep extends Step {
   tok: number;
@@ -132,16 +132,17 @@ export function useSession() {
   const enc = useEncoder();
   const count = (text: string) => (enc ? enc.encode(text).length : 0);
 
+  const [sessionIdx, setSessionIdx] = useState(0);
   const turns = useMemo(
     () =>
-      SESSION.map((s) => {
-        const b = buildLoops(s);
+      SESSIONS[sessionIdx].map((s) => {
+        const b = buildSessionTurn(s);
         return {
           util: b.util.map((st) => ({ ...st, tok: count(st.content) })) as CountedStep[],
           sem: b.sem.map((st) => ({ ...st, tok: count(st.content) })) as CountedStep[],
         };
       }),
-    [enc]
+    [enc, sessionIdx]
   );
 
   // Each turn lasts as long as its longer (utility) loop; the columns stay
@@ -203,6 +204,12 @@ export function useSession() {
     started,
     done,
     start: () => {
+      setSessionIdx((prev) => {
+        if (SESSIONS.length <= 1) return prev;
+        let n = prev;
+        while (n === prev) n = Math.floor(Math.random() * SESSIONS.length);
+        return n;
+      });
       setTick(0);
       setRunning(true);
       scrollToLoop();
@@ -547,13 +554,14 @@ function SessionView({ session }: { session: Session }) {
         {done && (
           <div className="mb-8">
             <h3 className="font-display text-lg font-semibold text-white">
-              One feature, five turns, a compounding gap
+              The tax is per destination, not per turn
             </h3>
             <p className="mt-1.5 text-sm text-zinc-500">
-              One developer building a checkout form, five prompts in a single session. Every turn
-              edits the same component, yet the utility-only codebase re-pays the file-finding tax on
-              each prompt because its grep term keeps colliding with other files. The semantic side
-              greps the identity class and lands in one hit, every time, so the gap compounds.
+              A real agent doesn't re-search for a file it's already editing — the follow-up tweaks
+              here cost the same on both sides, because the file is already in context. The gap only
+              opens when the work moves to a <em>new</em> part of the codebase. The utility-only side
+              pays the detective tax at each new component; the semantic side lands in one grep. The
+              more components a session touches, the wider it gets.
             </p>
             <ResultsTable totalU={totalU} totalS={totalS} taxU={taxU} taxS={taxS} />
           </div>
