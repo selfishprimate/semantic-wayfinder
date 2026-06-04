@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Navigation } from "lucide-react";
-import DemoBody, { SimControls, useSimulation } from "@/components/TokenDemo";
+import DemoBody, { SimControls, useSimulation, useSession } from "@/components/TokenDemo";
 
 export default function App() {
-  const sim = useSimulation();
+  const [mode, setMode] = useState<"single" | "session">("single");
+  const single = useSimulation();
+  const session = useSession();
+  const active = mode === "single" ? single : session;
   return (
     <div className="min-h-screen">
       {/* Decorative frame: diagonal-stripe side gutters + content rails (seekter-style).
@@ -28,9 +32,9 @@ export default function App() {
           </span>
         </div>
         <h1 className="font-display text-4xl font-bold !leading-[1.15] tracking-tight text-white sm:text-5xl">
-          An Identity Layer for Your Code{" "}
+          Stop Paying AI to Guess Your Code.{" "}
           <br className="hidden sm:block" />
-          So Agents Stop Guessing
+          <span className="text-emerald-400">Save Up to ~40%</span> on Token Burn.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-balance text-lg text-zinc-400">
           One semantic class on every page and component, naming what each one is. That's{" "}
@@ -41,13 +45,16 @@ export default function App() {
         </p>
 
         <div className="mt-8">
-          <SimControls sim={sim} />
+          <SimControls
+            active={active}
+            label={mode === "single" ? "Run the Simulation" : "Run the Session"}
+          />
         </div>
       </header>
 
       {/* Demo */}
       <main className="mx-auto max-w-5xl">
-        <DemoBody sim={sim} />
+        <DemoBody mode={mode} setMode={setMode} single={single} session={session} />
       </main>
 
       {/* Footer */}

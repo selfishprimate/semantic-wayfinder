@@ -70,6 +70,12 @@ export function buildLoops(s: Scenario): { util: Step[]; sem: Step[] } {
   const util: Step[] = [
     { label: cap(s.promptUtil), content: cap(s.promptUtil), kind: "request", baseline: true },
     {
+      label: 'Assistant — "On it. Let me find the right file first, then make the change."',
+      content: "On it. Let me find the right file first, then make the change.",
+      kind: "message",
+      baseline: true,
+    },
+    {
       label: `grep -rn "${s.grepWord}" app components`,
       content: `grep -rn "${s.grepWord}" app components`,
       kind: "search",
@@ -95,6 +101,12 @@ export function buildLoops(s: Scenario): { util: Step[]; sem: Step[] } {
   ];
   const sem: Step[] = [
     { label: cap(s.promptSem), content: cap(s.promptSem), kind: "request", baseline: true },
+    {
+      label: 'Assistant — "On it. Grepping the identity class, then I\'ll make the change."',
+      content: "On it. Grepping the identity class, then I'll make the change.",
+      kind: "message",
+      baseline: true,
+    },
     {
       label: `grep -rn "${s.className}" app components`,
       content: `grep -rn "${s.className}" app components`,
@@ -877,5 +889,214 @@ export const SCENARIOS: Scenario[] = [
     clarifyQ: "There's an OrdersTable and a DataTable. Which header?",
     reply: "the OrdersTable",
     doneMsg: "Made the OrdersTable header sticky.",
+  },
+];
+
+// ── Entire-session demo: one developer building the checkout form ─────────────
+// A single coherent task — wiring up a payment/checkout form, one edit per turn.
+// Every turn touches the SAME component (CheckoutForm / "checkoutForm"), but the
+// utility loop has to re-run detective work each time because the grep term it
+// reaches for ("card", "input", "button"…) keeps colliding with other files.
+// The semantic loop greps "checkoutForm" and lands in one hit, every turn.
+
+export const SESSION: Scenario[] = [
+  {
+    promptUtil: "add a card number field to the checkout form",
+    promptSem: "add a card number field to the checkoutForm",
+    grepWord: "card",
+    className: "checkoutForm",
+    pageRefs: ['app/checkout/page.tsx:3:import CheckoutForm from "@/components/CheckoutForm";'],
+    decoys: [
+      {
+        path: "components/PricingCard.tsx",
+        name: "PricingCard",
+        tag: "div",
+        cls: "rounded-2xl border p-8",
+        body: ['<h3 className="text-lg font-semibold">Pro</h3>'],
+      },
+      {
+        path: "components/CardSkeleton.tsx",
+        name: "CardSkeleton",
+        tag: "div",
+        cls: "animate-pulse rounded-xl bg-zinc-100",
+        body: ['<div className="h-24 w-full" />'],
+      },
+    ],
+    target: {
+      path: "components/CheckoutForm.tsx",
+      name: "CheckoutForm",
+      tag: "form",
+      cls: "space-y-4 rounded-2xl border p-6",
+      body: [
+        '<h2 className="text-xl font-semibold">Checkout</h2>',
+        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Email" />',
+        '<button className="w-full rounded-lg bg-black py-3 text-white">Pay</button>',
+      ],
+    },
+    edit: {
+      label: "Edit  CheckoutForm.tsx  (+ card number input)",
+      payload:
+        'CheckoutForm.tsx:\n+ <input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
+    },
+    clarifyQ: "There's a CheckoutForm, a PricingCard and a CardSkeleton. Which one?",
+    reply: "the CheckoutForm",
+    doneMsg: "Added a card number field to the CheckoutForm.",
+  },
+  {
+    promptUtil: "add expiry and CVC inputs to the checkout form",
+    promptSem: "add expiry and CVC inputs to the checkoutForm",
+    grepWord: "input",
+    className: "checkoutForm",
+    pageRefs: ['app/checkout/page.tsx:3:import CheckoutForm from "@/components/CheckoutForm";'],
+    decoys: [
+      {
+        path: "components/SearchInput.tsx",
+        name: "SearchInput",
+        tag: "div",
+        cls: "relative",
+        body: ['<input className="w-full rounded-full border px-4 py-2" placeholder="Search" />'],
+      },
+      {
+        path: "components/OtpInput.tsx",
+        name: "OtpInput",
+        tag: "div",
+        cls: "flex gap-2",
+        body: ['<input className="h-12 w-10 rounded border text-center" maxLength={1} />'],
+      },
+    ],
+    target: {
+      path: "components/CheckoutForm.tsx",
+      name: "CheckoutForm",
+      tag: "form",
+      cls: "space-y-4 rounded-2xl border p-6",
+      body: [
+        '<h2 className="text-xl font-semibold">Checkout</h2>',
+        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Email" />',
+        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
+        '<button className="w-full rounded-lg bg-black py-3 text-white">Pay</button>',
+      ],
+    },
+    edit: {
+      label: "Edit  CheckoutForm.tsx  (+ expiry / CVC row)",
+      payload:
+        'CheckoutForm.tsx:\n+ <div className="flex gap-3">\n+   <input className="w-full rounded-lg border px-3 py-2" placeholder="MM / YY" />\n+   <input className="w-full rounded-lg border px-3 py-2" placeholder="CVC" />\n+ </div>',
+    },
+    clarifyQ: "Several files have inputs — SearchInput, OtpInput, CheckoutForm. Which one?",
+    reply: "the CheckoutForm",
+    doneMsg: "Added expiry and CVC inputs to the CheckoutForm.",
+  },
+  {
+    promptUtil: "show the amount on the checkout pay button",
+    promptSem: "show the amount on the checkoutForm pay button",
+    grepWord: "button",
+    className: "checkoutForm",
+    pageRefs: ['app/checkout/page.tsx:3:import CheckoutForm from "@/components/CheckoutForm";'],
+    decoys: [
+      {
+        path: "components/IconButton.tsx",
+        name: "IconButton",
+        tag: "button",
+        cls: "rounded-full border p-2",
+        body: ["<Icon className=\"h-4 w-4\" />"],
+      },
+    ],
+    target: {
+      path: "components/CheckoutForm.tsx",
+      name: "CheckoutForm",
+      tag: "form",
+      cls: "space-y-4 rounded-2xl border p-6",
+      body: [
+        '<h2 className="text-xl font-semibold">Checkout</h2>',
+        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Email" />',
+        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
+        '<div className="flex gap-3">…expiry / CVC…</div>',
+        '<button className="w-full rounded-lg bg-black py-3 text-white">Pay</button>',
+      ],
+    },
+    edit: {
+      label: "Edit  CheckoutForm.tsx  (Pay → Pay $49)",
+      payload:
+        'CheckoutForm.tsx:\n- <button className="w-full rounded-lg bg-black py-3 text-white">Pay</button>\n+ <button className="w-full rounded-lg bg-black py-3 text-white">Pay $49</button>',
+    },
+    clarifyQ: "There's an IconButton and the CheckoutForm's button. Which one?",
+    reply: "the CheckoutForm",
+    doneMsg: "Put the amount on the CheckoutForm pay button.",
+  },
+  {
+    promptUtil: "add an inline error under the card field on checkout",
+    promptSem: "add an inline error to the checkoutForm",
+    grepWord: "error",
+    className: "checkoutForm",
+    pageRefs: ['app/checkout/page.tsx:3:import CheckoutForm from "@/components/CheckoutForm";'],
+    decoys: [
+      {
+        path: "components/ErrorBanner.tsx",
+        name: "ErrorBanner",
+        tag: "div",
+        cls: "rounded-lg bg-red-50 p-4 text-red-700",
+        body: ["{message}"],
+      },
+    ],
+    target: {
+      path: "components/CheckoutForm.tsx",
+      name: "CheckoutForm",
+      tag: "form",
+      cls: "space-y-4 rounded-2xl border p-6",
+      body: [
+        '<h2 className="text-xl font-semibold">Checkout</h2>',
+        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Email" />',
+        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
+        '<div className="flex gap-3">…expiry / CVC…</div>',
+        '<button className="w-full rounded-lg bg-black py-3 text-white">Pay $49</button>',
+      ],
+    },
+    edit: {
+      label: "Edit  CheckoutForm.tsx  (+ inline error)",
+      payload:
+        'CheckoutForm.tsx:\n+ {error && <p className="text-sm text-red-600">{error}</p>}',
+    },
+    clarifyQ: "There's an ErrorBanner component too. Inline in the CheckoutForm, or the banner?",
+    reply: "inline in the CheckoutForm",
+    doneMsg: "Added an inline error to the CheckoutForm.",
+  },
+  {
+    promptUtil: "make the heading on the checkout form bigger",
+    promptSem: "make the checkoutForm heading bigger",
+    grepWord: "checkout",
+    className: "checkoutForm",
+    pageRefs: [
+      'app/checkout/page.tsx:3:import CheckoutForm from "@/components/CheckoutForm";',
+      'app/checkout/layout.tsx:1:export default function CheckoutLayout({ children }) {',
+    ],
+    decoys: [
+      {
+        path: "components/CheckoutSummary.tsx",
+        name: "CheckoutSummary",
+        tag: "aside",
+        cls: "rounded-2xl border p-6",
+        body: ['<h2 className="text-xl font-semibold">Order summary</h2>'],
+      },
+    ],
+    target: {
+      path: "components/CheckoutForm.tsx",
+      name: "CheckoutForm",
+      tag: "form",
+      cls: "space-y-4 rounded-2xl border p-6",
+      body: [
+        '<h2 className="text-xl font-semibold">Checkout</h2>',
+        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Email" />',
+        '<input className="w-full rounded-lg border px-3 py-2" placeholder="Card number" />',
+        '<div className="flex gap-3">…expiry / CVC…</div>',
+        '<button className="w-full rounded-lg bg-black py-3 text-white">Pay $49</button>',
+      ],
+    },
+    edit: {
+      label: "Edit  CheckoutForm.tsx  (text-xl → text-2xl)",
+      payload:
+        'CheckoutForm.tsx:\n- <h2 className="text-xl font-semibold">Checkout</h2>\n+ <h2 className="text-2xl font-semibold">Checkout</h2>',
+    },
+    clarifyQ: "There's a CheckoutForm and a CheckoutSummary, both with headings. Which one?",
+    reply: "the CheckoutForm",
+    doneMsg: "Enlarged the CheckoutForm heading.",
   },
 ];
