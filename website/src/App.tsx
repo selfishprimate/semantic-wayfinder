@@ -34,7 +34,7 @@ export default function App() {
         <h1 className="font-display text-4xl font-bold !leading-[1.15] tracking-tight text-white sm:text-5xl">
           Stop Paying AI to Guess Your Code.{" "}
           <br className="hidden sm:block" />
-          <span className="text-emerald-400">Save Up to ~40%</span> on Token Burn.
+          <span className="text-emerald-400">Save Up to 50%</span> on Token Burn.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-balance text-lg text-zinc-400">
           One semantic class on every page and component, naming what each one is. That's{" "}
