@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Tiktoken } from "js-tiktoken/lite";
-import { Play, RotateCcw, Search } from "lucide-react";
+import { Check, Play, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { utilitySteps, semanticSteps, type Step } from "@/lib/simulation";
+import { SCENARIOS, buildLoops, type Step } from "@/lib/simulation";
 
 interface CountedStep extends Step {
   tok: number;
@@ -32,17 +32,20 @@ export function useSimulation() {
     };
   }, []);
 
+  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const loops = useMemo(() => buildLoops(SCENARIOS[scenarioIdx]), [scenarioIdx]);
+
   const count = (text: string) => (enc ? enc.encode(text).length : 0);
   const util = useMemo<CountedStep[]>(
-    () => utilitySteps.map((s) => ({ ...s, tok: count(s.content) })),
-    [enc]
+    () => loops.util.map((s) => ({ ...s, tok: count(s.content) })),
+    [enc, loops]
   );
   const sem = useMemo<CountedStep[]>(
-    () => semanticSteps.map((s) => ({ ...s, tok: count(s.content) })),
-    [enc]
+    () => loops.sem.map((s) => ({ ...s, tok: count(s.content) })),
+    [enc, loops]
   );
 
-  const maxLen = Math.max(utilitySteps.length, semanticSteps.length);
+  const maxLen = Math.max(loops.util.length, loops.sem.length);
   const [tick, setTick] = useState(0);
   const [running, setRunning] = useState(false);
   const started = tick > 0 || running;
@@ -74,8 +77,19 @@ export function useSimulation() {
     savings: Math.round((1 - sum(sem) / sum(util)) * 100),
     ratio: (sum(util) / sum(sem)).toFixed(1),
     start: () => {
+      setScenarioIdx((prev) => {
+        if (SCENARIOS.length <= 1) return prev;
+        let n = prev;
+        while (n === prev) n = Math.floor(Math.random() * SCENARIOS.length);
+        return n;
+      });
       setTick(0);
       setRunning(true);
+      requestAnimationFrame(() =>
+        document
+          .getElementById("loop")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" })
+      );
     },
     reset: () => {
       setRunning(false);
@@ -142,24 +156,41 @@ function Panel({
         </span>
       </div>
       <div className="min-h-[14rem] flex-1 space-y-1.5 px-5 py-4 font-mono text-xs">
-        {/* User request — always visible */}
-        <div className="flex items-start gap-2">
-          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-600" />
-          <span className="flex-1 leading-relaxed text-zinc-300">{request.label}</span>
-          <span className="shrink-0 tabular-nums text-zinc-500">+{request.tok}</span>
-        </div>
+        {/* User request — shown once the run starts (hidden in the idle state),
+            styled distinctly from the agent's steps. */}
+        {revealed >= 1 && (
+          <div className="mb-3 flex items-start gap-2 rounded-md bg-white/[0.045] px-3 py-2">
+            <span className="leading-relaxed text-emerald-400">❯</span>
+            <span className="flex-1 leading-relaxed font-medium text-zinc-100">{request.label}</span>
+            <span className="shrink-0 tabular-nums text-zinc-500">+{request.tok}</span>
+          </div>
+        )}
         {rest.map((s, j) => {
           const i = j + 1;
           if (i >= revealed) return null;
+          const isDone = s.kind === "done";
           return (
-            <div key={i} className="flex items-start gap-2">
+            <div key={i} className="flex items-start gap-2 px-3">
+              <span className="flex h-[1.6em] shrink-0 items-center">
+                {isDone ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                ) : (
+                  <span
+                    className={cn(
+                      "h-1 w-1 rounded-full",
+                      s.baseline ? "bg-zinc-600" : "bg-amber-500"
+                    )}
+                  />
+                )}
+              </span>
               <span
                 className={cn(
-                  "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
-                  s.baseline ? "bg-zinc-600" : "bg-amber-500"
+                  "flex-1 leading-relaxed",
+                  isDone ? "text-emerald-400" : "text-zinc-400"
                 )}
-              />
-              <span className="flex-1 leading-relaxed text-zinc-400">{s.label}</span>
+              >
+                {s.label}
+              </span>
               <span className="shrink-0 tabular-nums text-zinc-500">+{s.tok}</span>
             </div>
           );
@@ -178,7 +209,10 @@ export default function DemoBody({ sim }: { sim: Sim }) {
     <div>
       {/* Two-cell split — panels spread across the halves, divided by a center
           rule; the page rails bound the outer edges. */}
-      <div className="grid grid-cols-1 divide-y divide-white/[0.035] border-b border-white/[0.035] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+      <div
+        id="loop"
+        className="scroll-mt-8 grid grid-cols-1 divide-y divide-white/[0.035] border-b border-white/[0.035] lg:grid-cols-2 lg:divide-x lg:divide-y-0"
+      >
         <Panel title="Utility Classes Only" tone="utility" steps={util} revealed={revealedU} />
         <Panel title="Semantic Identity Classes" tone="semantic" steps={sem} revealed={revealedS} />
       </div>
