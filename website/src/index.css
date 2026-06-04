@@ -4,20 +4,23 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
+    /* Richer, cooler near-black (seekter-style) instead of flat pure black —
+       reads as an intentional surface, not a void, even on a bright screen. */
+    --background: 220 14% 7%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 220 14% 7%;
     --card-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
+    /* Surfaces + borders matched to seekter's cool palette. */
+    --secondary: 225 8% 13%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    --muted: 225 8% 13%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 225 8% 13%;
     --accent-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 220 9% 10%;
+    --input: 225 7% 15%;
     --ring: 240 4.9% 83.9%;
     --radius: 0.75rem;
   }
@@ -47,7 +50,21 @@
     135deg,
     transparent 0,
     transparent 7px,
-    rgba(255, 255, 255, 0.025) 7px,
-    rgba(255, 255, 255, 0.025) 8px
+    rgba(255, 255, 255, 0.05) 7px,
+    rgba(255, 255, 255, 0.05) 8px
   );
+}
+
+/* Grain overlay (seekter-style): a faint fractal-noise film over the whole
+   page, giving the dark background texture and depth instead of flat color. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.35' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
 }

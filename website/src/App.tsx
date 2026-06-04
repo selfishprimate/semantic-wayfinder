@@ -13,18 +13,18 @@ export default function App() {
           Hidden below lg where there's no room for side margins. */}
       <div aria-hidden className="hidden lg:block">
         <div
-          className="page-gutter pointer-events-none fixed inset-y-0 z-40 w-14 border-l border-white/[0.035]"
+          className="page-gutter pointer-events-none fixed inset-y-0 z-40 w-14 border-l border-white/[0.05]"
           style={{ right: "calc(50% + 32rem)" }}
         />
         <div
-          className="page-gutter pointer-events-none fixed inset-y-0 z-40 w-14 border-r border-white/[0.035]"
+          className="page-gutter pointer-events-none fixed inset-y-0 z-40 w-14 border-r border-white/[0.05]"
           style={{ left: "calc(50% + 32rem)" }}
         />
-        <div className="pointer-events-none fixed inset-y-0 left-1/2 z-40 w-full max-w-5xl -translate-x-1/2 border-x border-white/[0.035]" />
+        <div className="pointer-events-none fixed inset-y-0 left-1/2 z-40 w-full max-w-5xl -translate-x-1/2 border-x border-white/[0.05]" />
       </div>
 
       {/* Hero */}
-      <header className="mx-auto max-w-5xl border-b border-white/[0.035] px-6 pb-24 pt-24 text-center">
+      <header className="mx-auto max-w-5xl border-b border-white/[0.05] px-6 pb-24 pt-24 text-center">
         <div className="mb-8 flex flex-col items-center gap-3">
           <Navigation className="h-7 w-7 text-emerald-400" />
           <span className="font-mono text-xl font-medium tracking-tight text-white">
@@ -58,7 +58,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 border-t border-white/[0.035] px-6 py-8 text-sm text-zinc-500 sm:flex-row">
+      <footer className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 border-t border-white/[0.05] px-6 py-8 text-sm text-zinc-500 sm:flex-row">
         <span className="font-mono">
           <span className="text-zinc-500">.</span>
           <span className="text-zinc-400">semanticWayfinder</span>

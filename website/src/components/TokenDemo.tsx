@@ -359,7 +359,7 @@ function Panel({
   const accent = tone === "utility" ? "text-amber-400" : "text-emerald-400";
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-between border-b border-white/[0.035] px-5 py-3">
+      <div className="flex items-center justify-between border-b border-white/[0.05] px-5 py-3">
         <span className="text-sm font-medium text-zinc-300">{title}</span>
         <span className={cn("font-mono text-lg font-semibold tabular-nums", accent)}>
           {running}
@@ -392,7 +392,7 @@ function ResultsTable({
   return (
     <table className="mt-5 w-full text-sm">
       <thead>
-        <tr className="border-b border-white/[0.035] text-xs uppercase tracking-wide text-zinc-500">
+        <tr className="border-b border-white/[0.05] text-xs uppercase tracking-wide text-zinc-500">
           <th className="py-2 pr-4 text-left font-medium">Metric (tokens)</th>
           <th className="px-4 py-2 text-right font-medium text-amber-400">Utility</th>
           <th className="px-4 py-2 text-right font-medium text-emerald-400">Semantic</th>
@@ -427,7 +427,7 @@ function SingleView({ sim }: { sim: Sim }) {
     <div>
       <div
         id="loop"
-        className="scroll-mt-8 grid grid-cols-1 divide-y divide-white/[0.035] border-b border-white/[0.035] lg:grid-cols-2 lg:divide-x lg:divide-y-0"
+        className="scroll-mt-8 grid grid-cols-1 divide-y divide-white/[0.05] border-b border-white/[0.05] lg:grid-cols-2 lg:divide-x lg:divide-y-0"
       >
         <Panel title="Utility Classes Only" tone="utility" steps={util} revealed={revealedU} />
         <Panel title="Semantic Identity Classes" tone="semantic" steps={sem} revealed={revealedS} />
@@ -474,7 +474,7 @@ function SessionColumn({
   const accent = tone === "utility" ? "text-amber-400" : "text-emerald-400";
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-between border-b border-white/[0.035] px-5 py-3">
+      <div className="flex items-center justify-between border-b border-white/[0.05] px-5 py-3">
         <span className="text-sm font-medium text-zinc-300">{title}</span>
         <span className={cn("font-mono text-lg font-semibold tabular-nums", accent)}>
           {cumulative}
@@ -539,7 +539,7 @@ function SessionView({ session }: { session: Session }) {
     <div>
       <div
         id="loop"
-        className="scroll-mt-8 grid grid-cols-1 divide-y divide-white/[0.035] border-b border-white/[0.035] lg:grid-cols-2 lg:divide-x lg:divide-y-0"
+        className="scroll-mt-8 grid grid-cols-1 divide-y divide-white/[0.05] border-b border-white/[0.05] lg:grid-cols-2 lg:divide-x lg:divide-y-0"
       >
         <SessionColumn title="Utility Classes Only" tone="utility" turns={utilTurns} cumulative={cumulativeUtil} />
         <SessionColumn
@@ -643,7 +643,7 @@ export default function DemoBody({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.035] px-6 py-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.05] px-6 py-6">
         <Segmented mode={mode} onChange={switchTo} disabled={active.running} />
         <SimControls
           active={active}
