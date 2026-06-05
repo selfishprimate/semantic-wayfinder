@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "casing": "camelCase",
   "prefix": null,
   "editors": ["claude-code"],
@@ -31,5 +31,10 @@
     "components/TableOfContents.tsx": ["tableOfContents"],
     "components/DocsSidebar.tsx": ["docsSidebar"]
   },
-  "wrapperMods": {}
+  "wrapperMods": {},
+  "report": {
+    "enabled": true,
+    "terminal": true,
+    "file": "WAYFINDER_REPORT.md"
+  }
 }

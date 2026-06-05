@@ -9,6 +9,21 @@ While the project is in `0.x`, breaking grammar changes may land in MINOR bumps.
 
 ---
 
+## [0.5.0] — 2026-06-05
+
+### Added
+- **Savings report (optional).** Bootstrap now offers to install a `post-commit` hook that, after each commit, estimates how much agent navigation the commit's tagged components saved and records it to a cumulative `WAYFINDER_REPORT.md` (and prints a per-commit summary in the terminal). The hook is additive, needs Node, and never blocks or alters a commit.
+  - The estimator (`wayfinder-report.mjs`) and hook template ship in the repo under `scripts/`; bootstrap fetches them from the public repo via `curl` (Step 6b). No embedding in `SKILL.md`, so the markdown stays lean and the script stays the single source of truth.
+  - **Honesty:** "savings" is a counterfactual, so the token figure is **estimated/modeled** (real `git grep` precision + a ~4-chars/token heuristic), clearly labeled in both the terminal output and the report file — never presented as a billed figure.
+  - Controlled from `.wayfinder.json` → `report`: `enabled` (master switch), `terminal` (per-commit print on/off), `file` (cumulative path, or `false` to skip the file).
+  - Detects existing hook managers (Husky/lefthook): integrates with them instead of overwriting `.git/hooks/post-commit`.
+  - `--remove` uninstalls the report artifacts (Step 3c).
+
+### Changed
+- **Manifest schema → `0.3.0`**: adds the optional `report` block. Backward compatible — older manifests without it keep working (defaults apply).
+
+---
+
 ## [0.4.1] — 2026-06-02
 
 ### Fixed

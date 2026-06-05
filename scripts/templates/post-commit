@@ -1,0 +1,26 @@
+#!/bin/sh
+# Wayfinder post-commit hook (installed into user projects).
+#
+# After every commit, estimate how much agent "detective work" the commit's
+# Wayfinder-tagged components saved, print it, and append it to
+# WAYFINDER_REPORT.md. Runs AFTER the commit, so the diff is final and we can
+# never block or alter a commit (git-safety rule).
+#
+# It no-ops silently when: node isn't available, there's no .wayfinder.json, or
+# the commit touched no tagged components. Never exits non-zero — a reporting
+# hook must not be able to break someone's git.
+#
+# Install (from the project root):
+#   cp <wayfinder>/scripts/wayfinder-report.mjs .wayfinder-report.mjs
+#   cp <wayfinder>/scripts/templates/post-commit .git/hooks/post-commit
+#   chmod +x .git/hooks/post-commit
+
+command -v node >/dev/null 2>&1 || exit 0
+[ -f ".wayfinder.json" ] || exit 0
+
+SCRIPT=".wayfinder-report.mjs"
+[ -f "$SCRIPT" ] || SCRIPT="scripts/wayfinder-report.mjs"
+[ -f "$SCRIPT" ] || exit 0
+
+node "$SCRIPT" || true
+exit 0

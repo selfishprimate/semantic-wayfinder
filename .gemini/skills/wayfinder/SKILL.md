@@ -1,7 +1,7 @@
 ---
 name: wayfinder
 description: Tags page roots and component roots in your codebase with semantic identity classes so AI agents can target them precisely instead of guessing. Reduces token burn and back-and-forth on edit requests. Runs on first invocation to set up the project; subsequent invocations only touch new or changed files.
-version: 0.4.1
+version: 0.5.0
 license: MIT
 homepage: https://github.com/selfishprimate/semantic-wayfinder
 ---
@@ -88,7 +88,7 @@ Create `.wayfinder.json` in the project root:
 
 ```json
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "casing": "camelCase | kebab-case",
   "prefix": "wf | custom-string | null",
   "editors": ["claude-code", "gemini-cli", "codex-cli"],
@@ -99,13 +99,18 @@ Create `.wayfinder.json` in the project root:
     "components": {}
   },
   "tagged": {},
-  "wrapperMods": {}
+  "wrapperMods": {},
+  "report": {
+    "enabled": true,
+    "terminal": true,
+    "file": "WAYFINDER_REPORT.md"
+  }
 }
 ```
 
 This file is the source of truth for every subsequent run. Do not gitignore it — it should be committed so collaborators inherit the same conventions.
 
-Three structural fields:
+Structural fields:
 
 - **`siteMap`** captures the result of Phase 1 (structural analysis). `pages` maps each page file path to its resolved class name. `components` maps each component file path to its resolved class name (after collision resolution). This is what Phase 2 reads to know what to write.
 
@@ -126,7 +131,9 @@ Three structural fields:
 
   For a wrapper file like `components/auth-shell.tsx` that Wayfinder modified to add a `className` prop and forward it to the root `<div>`, this entry tells `--remove` what to undo. The `rootElementTag` helps locate the right element when reverting (in case the file has been edited since).
 
-All three fields start empty during Step 5 and are populated during Step 7 (tagged) or as needed (wrapperMods).
+- **`report`** controls the optional savings report (see Step 6b). `enabled` is the master switch, `terminal` toggles the per-commit terminal print, and `file` is the cumulative report path (or `false` to skip the file). Absent keys fall back to the defaults shown. Only present if the user installed the report.
+
+`siteMap`, `tagged`, and `wrapperMods` start empty during Step 5 and are populated during Step 7 (tagged) or as needed. `report` is written in Step 6b only if the user opts in.
 
 ### Step 6 — Write instruction files
 
@@ -246,6 +253,33 @@ They should run `/wayfinder` (the Semantic Wayfinder skill). Don't try to retroa
 They should run `/wayfinder --remove`. The skill reads its own manifest in `.wayfinder.json` and strips only the classes it originally added — leaving utility classes and any semantic classes the user wrote by hand untouched. Don't attempt to grep-and-strip classes yourself; it would risk deleting user-authored work.
 ```
 
+### Step 6b — Offer the savings report (optional)
+
+After config and instruction files are written, offer the **savings report**: a `post-commit` hook that, after each commit, estimates how much agent navigation the commit's tagged components saved and records it to a `WAYFINDER_REPORT.md`. It's optional, additive, and never blocks or alters a commit.
+
+> Want a savings report? After each commit I can estimate how much agent "detective work" your tagged components saved — printed in your terminal and logged to `WAYFINDER_REPORT.md`.
+>
+> 1) Yes, install it
+> 2) No thanks
+
+If the user accepts, fetch the two files from the public repo (same mechanism that delivered this skill — needs network):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/selfishprimate/semantic-wayfinder/main/scripts/wayfinder-report.mjs   > .wayfinder-report.mjs
+curl -fsSL https://raw.githubusercontent.com/selfishprimate/semantic-wayfinder/main/scripts/templates/post-commit > .git/hooks/post-commit
+chmod +x .git/hooks/post-commit
+```
+
+Then write the `report` block into `.wayfinder.json` (the script reads it to decide terminal output and file path — see Step 5 schema).
+
+**Hook-manager check (do this before writing `.git/hooks/post-commit`).** If the project already uses a hook manager — look for a `.husky/` directory or a non-default `git config core.hooksPath` (Husky, lefthook, simple-git-hooks) — do **not** write `.git/hooks/post-commit` (it would be ignored or would clash). Instead add the invocation line to that manager's post-commit (e.g. append `node .wayfinder-report.mjs` to `.husky/post-commit`). Still fetch `.wayfinder-report.mjs` to the project root either way.
+
+Notes:
+- The hook needs Node; without it the hook is a silent no-op. It never exits non-zero.
+- The report's token figures are **estimated/modeled**, not billed. The script and the report file say so — never present them as measured.
+- If `curl` fails (offline / repo unreachable), tell the user how to install manually (the two files live in the repo under `scripts/`) and continue — never block bootstrap on the report.
+- If the user declines, omit the `report` block (or write `{"enabled": false}`); a later install stays a clean opt-in.
+
 ### Step 7 — Tag the existing codebase
 
 Proceed automatically into the tagging phase (described in "The tagging engine" below). The user does not need to issue a second command.
@@ -279,7 +313,7 @@ chore: partial semantic wayfinder setup
   vs tagged for the diff. Re-run /wayfinder to finish.
 ```
 
-Stage `.wayfinder.json`, the editor instruction files, and every source file that was actually modified (Phase 2 wrote a class to). The manifest is already current because of the per-file transaction rule — no need to fix it before staging.
+Stage `.wayfinder.json`, the editor instruction files, every source file that was actually modified (Phase 2 wrote a class to), and — if the savings report was installed in Step 6b — `.wayfinder-report.mjs` (the post-commit hook in `.git/hooks/` is local and not committed). The manifest is already current because of the per-file transaction rule — no need to fix it before staging.
 
 **Do not skip the commit.** Even a single tagged file should be committed. Leaving the working tree dirty after Wayfinder ran is a usability failure — the user has no clean way to review and accept the work, and any subsequent run hits the git-cleanliness check and refuses to proceed.
 
@@ -434,6 +468,16 @@ If the user picks (1):
 If the user picks (2): leave wrappers untouched. The added className prop is harmless when no caller uses it. Wrapper mods stay in `.wayfinder.json` (and in code) but the manifest classes are already gone, so Wayfinder is functionally uninstalled.
 
 Picking (3) shows the diff for each wrapper one at a time and asks per-file.
+
+### Step 3c — Uninstall the savings report (if installed)
+
+If `config.report` is present (the savings report was installed in Step 6b), remove its artifacts:
+
+- Delete `.wayfinder-report.mjs`.
+- Remove the Wayfinder invocation from the hook: if `.git/hooks/post-commit` is the Wayfinder one, delete it; if the line was added to a hook manager (`.husky/post-commit` etc.), remove just that line.
+- `WAYFINDER_REPORT.md` is the user's own record — ask before deleting it, and default to keeping it.
+
+This applies regardless of the "full" vs "classes only" choice, since the report is separate tooling.
 
 ### Step 4 — Clean up config and instruction files (if "full removal" was chosen)
 
