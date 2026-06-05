@@ -1,9 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigation } from "lucide-react";
 import DemoBody, { SimControls, useSimulation, useSession } from "@/components/TokenDemo";
 
+const TAB_KEY = "sw-active-tab";
+
 export default function App() {
-  const [mode, setMode] = useState<"single" | "session">("single");
+  // Returning visitors resume on whichever tab they last left open; first-time
+  // visitors land on Single Prompt. Both tabs arrive pre-filled with a run.
+  const [mode, setMode] = useState<"single" | "session">(() => {
+    if (typeof window === "undefined") return "single";
+    return window.localStorage.getItem(TAB_KEY) === "session" ? "session" : "single";
+  });
+  useEffect(() => {
+    window.localStorage.setItem(TAB_KEY, mode);
+  }, [mode]);
+
   const single = useSimulation();
   const session = useSession();
   const active = mode === "single" ? single : session;
@@ -45,10 +56,7 @@ export default function App() {
         </p>
 
         <div className="mt-8">
-          <SimControls
-            active={active}
-            label={mode === "single" ? "Run the Simulation" : "Run the Session"}
-          />
+          <SimControls active={active} label="Start the Session" />
         </div>
       </header>
 

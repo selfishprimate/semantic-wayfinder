@@ -86,6 +86,16 @@ export function useSimulation() {
     return () => clearTimeout(id);
   }, [running, tick, maxLen]);
 
+  // First visit: once the tokenizer is ready, jump straight to a completed run
+  // so the panels are full instead of empty. Only on initial mount — a manual
+  // Reset afterwards still clears to a blank slate.
+  const didPrefill = useRef(false);
+  useEffect(() => {
+    if (didPrefill.current || !enc) return;
+    didPrefill.current = true;
+    setTick(maxLen);
+  }, [enc, maxLen]);
+
   return {
     enc,
     util,
@@ -171,6 +181,14 @@ export function useSession() {
     return () => clearTimeout(id);
   }, [running, tick, totalTicks]);
 
+  // First visit: show a completed session instead of empty columns (see above).
+  const didPrefill = useRef(false);
+  useEffect(() => {
+    if (didPrefill.current || !enc) return;
+    didPrefill.current = true;
+    setTick(totalTicks);
+  }, [enc, totalTicks]);
+
   const clamp = (x: number, hi: number) => Math.max(0, Math.min(hi, x));
   const utilTurns: RevealedLoop[] = turns.map((t, i) => ({
     steps: t.util,
@@ -234,7 +252,7 @@ export function SimControls({
   label: string;
   subtle?: boolean;
 }) {
-  const { enc, running, done, started, start, reset } = active;
+  const { enc, running, started, start, reset } = active;
   const runIcon = !enc || running ? (
     <Loader2 className="h-4 w-4 animate-spin" />
   ) : (
@@ -242,7 +260,7 @@ export function SimControls({
   );
 
   if (subtle) {
-    const runTitle = !enc ? "Loading tokenizer…" : running ? "Running…" : done ? "Run again" : label;
+    const runTitle = !enc ? "Loading tokenizer…" : running ? "Running…" : label;
     return (
       <div className="flex items-center justify-center gap-2">
         <Button
@@ -284,7 +302,7 @@ export function SimControls({
           </>
         ) : (
           <>
-            {runIcon} {done ? "Run Again" : label}
+            {runIcon} {label}
           </>
         )}
       </Button>
@@ -636,8 +654,7 @@ export default function DemoBody({
   const active = mode === "single" ? single : session;
   const switchTo = (m: "single" | "session") => {
     if (m === mode || active.running) return;
-    single.reset();
-    session.reset();
+    // Keep each tab's state intact — both arrive pre-filled with a completed run.
     setMode(m);
   };
 
@@ -645,11 +662,7 @@ export default function DemoBody({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.05] px-6 py-6">
         <Segmented mode={mode} onChange={switchTo} disabled={active.running} />
-        <SimControls
-          active={active}
-          label={mode === "single" ? "Run the Simulation" : "Run the Session"}
-          subtle
-        />
+        <SimControls active={active} label="Start the Session" subtle />
       </div>
 
       {mode === "single" ? <SingleView sim={single} /> : <SessionView session={session} />}
