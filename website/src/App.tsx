@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { Navigation } from "lucide-react";
-import DemoBody, { SimControls, useSimulation, useSession } from "@/components/TokenDemo";
+import { Github, Heart, Navigation } from "lucide-react";
+import DemoBody, { useSimulation, useSession } from "@/components/TokenDemo";
+import InstallCard from "@/components/InstallCard";
+import { buttonVariants } from "@/components/ui/button";
 
 const TAB_KEY = "sw-active-tab";
 
@@ -17,7 +19,6 @@ export default function App() {
 
   const single = useSimulation();
   const session = useSession();
-  const active = mode === "single" ? single : session;
   return (
     <div className="min-h-screen">
       {/* Decorative frame: diagonal-stripe side gutters + content rails (seekter-style).
@@ -55,9 +56,26 @@ export default function App() {
           tokens on detective work.
         </p>
 
-        <div className="mt-8">
-          <SimControls active={active} label="Start the Session" />
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <a
+            href="https://github.com/selfishprimate/semantic-wayfinder"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({ variant: "default" })}
+          >
+            <Github className="h-4 w-4" /> GitHub
+          </a>
+          <a
+            href="https://github.com/sponsors/selfishprimate"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            <Heart className="h-4 w-4" /> Support
+          </a>
         </div>
+
+        <InstallCard />
       </header>
 
       {/* Demo */}
