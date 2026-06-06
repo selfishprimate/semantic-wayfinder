@@ -9,6 +9,19 @@ While the project is in `0.x`, breaking grammar changes may land in MINOR bumps.
 
 ---
 
+## [0.6.0] — 2026-06-06
+
+### Added
+- **`/wayfinder --report` flag** to install the savings report after the fact (and `--report off` to uninstall) — for projects that skipped it at bootstrap or want to toggle it later. Editing `.wayfinder.json` alone can't install (the script + hook still need fetching); the flag does the full install/uninstall and commits. Once installed, the `report` block still toggles `terminal`/`file` on its own.
+
+### Changed
+- **The savings-report opt-in moved into the upfront setup questions** (Step 3 Q3, alongside casing/prefix), so it always appears in the "review your answers" wizard. Step 6b is now an execution step that installs based on the answer, instead of a separate later question.
+
+### Fixed
+- **Bootstrap silently skipped the savings-report opt-in.** The Step 5 config template pre-included a `report` block, so the agent wrote it during config creation and then treated the opt-in as already-decided — the user was never asked (the block landed as `enabled: false`). Removed `report` from the Step 5 template and documented the schema in prose. Combined with the move above, the question is now reliably surfaced and the `report` block is written only on opt-in.
+
+---
+
 ## [0.5.0] — 2026-06-05
 
 ### Added

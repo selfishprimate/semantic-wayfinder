@@ -1,7 +1,7 @@
 ---
 name: wayfinder
 description: Tags page roots and component roots in your codebase with semantic identity classes so AI agents can target them precisely instead of guessing. Reduces token burn and back-and-forth on edit requests. Runs on first invocation to set up the project; subsequent invocations only touch new or changed files.
-version: 0.5.0
+version: 0.6.0
 license: MIT
 homepage: https://github.com/selfishprimate/semantic-wayfinder
 ---
@@ -23,11 +23,12 @@ Invoke this skill when the user:
 
 Do not invoke this skill for unrelated styling, refactoring, or formatting tasks.
 
-## Core behavior: one command, three modes
+## Core behavior: one command, several modes
 
 On invocation, check the project root for a `.wayfinder.json` configuration file and the command-line flags.
 
 - **`--remove` flag passed** → run **remove mode** (strip every class in the manifest, optionally delete config and instruction blocks)
+- **`--report` flag passed** → run **report mode** (install the savings report; `--report off` uninstalls it). See "Report mode" below. Does not tag anything.
 - **No config file present** → run **bootstrap mode** (full setup + full-codebase tagging)
 - **Config file present** → run **incremental mode** (tag only new or changed files; also re-check for newly introduced collisions)
 
@@ -55,9 +56,9 @@ Scan the project root for existing AI editor configuration:
 
 Report what was found. Then ask the user which AI editors they plan to use going forward (multi-select: Claude Code, Gemini CLI, Codex CLI, Other). Instruction files will be written for all selected editors.
 
-### Step 3 — Naming convention
+### Step 3 — Setup questions
 
-Two questions in sequence. Show a live preview after each answer so the user sees what their choices produce.
+Three questions. These are part of the **upfront setup batch** (alongside editors in Step 2) — ask them together before writing anything, and include all of them in any "review your answers" summary. Show a live preview after the naming answers so the user sees what their choices produce.
 
 **Q1 — Casing:**
 - `camelCase` (recommended for JSX projects) — `aboutPage`, `contactForm`
@@ -68,9 +69,13 @@ Two questions in sequence. Show a live preview after each answer so the user see
 - `wf` → `wfAboutPage`, `wfContactForm` (camel) or `wf-about-page`, `wf-contact-form` (kebab)
 - Custom → let the user type their own (e.g. `myco`)
 
-Then summarize:
+**Q3 — Savings report (optional):** This is a required question — never pre-decide it or drop it from the setup batch.
+- Yes — install a `post-commit` hook that, after each commit, estimates how much agent navigation your tagged components saved (printed in the terminal and logged to `WAYFINDER_REPORT.md`). Additive, needs Node, never blocks a commit.
+- No (default) — skip it. The user can add it later anytime with `/wayfinder --report`.
 
-> Got it. With these choices, your pages will look like `aboutPage`, `pricingPage`. Your components will look like `contactForm`, `mainHeader`. Confirm to proceed.
+Then summarize all answers (editors, casing, prefix, savings report):
+
+> Got it. With these choices, your pages will look like `aboutPage`, `pricingPage`. Your components will look like `contactForm`, `mainHeader`. Savings report: `<on/off>`. Confirm to proceed.
 
 (Substitute the live examples for the user's actual casing and prefix.)
 
@@ -99,14 +104,11 @@ Create `.wayfinder.json` in the project root:
     "components": {}
   },
   "tagged": {},
-  "wrapperMods": {},
-  "report": {
-    "enabled": true,
-    "terminal": true,
-    "file": "WAYFINDER_REPORT.md"
-  }
+  "wrapperMods": {}
 }
 ```
+
+> **Do not add a `report` block here.** The savings report is opt-in and is written **only** in Step 6b, and only if the user says yes. Writing it now (even as `enabled: false`) pre-decides the choice and causes Step 6b's question to be skipped.
 
 This file is the source of truth for every subsequent run. Do not gitignore it — it should be committed so collaborators inherit the same conventions.
 
@@ -131,9 +133,9 @@ Structural fields:
 
   For a wrapper file like `components/auth-shell.tsx` that Wayfinder modified to add a `className` prop and forward it to the root `<div>`, this entry tells `--remove` what to undo. The `rootElementTag` helps locate the right element when reverting (in case the file has been edited since).
 
-- **`report`** controls the optional savings report (see Step 6b). `enabled` is the master switch, `terminal` toggles the per-commit terminal print, and `file` is the cumulative report path (or `false` to skip the file). Absent keys fall back to the defaults shown. Only present if the user installed the report.
+- **`report`** (not written here — added in Step 6b only on opt-in) controls the optional savings report. Schema: `{ "enabled": true, "terminal": true, "file": "WAYFINDER_REPORT.md" }` — `enabled` is the master switch, `terminal` toggles the per-commit terminal print, `file` is the cumulative report path (or `false` to skip the file). Absent keys fall back to those defaults. The whole block is absent unless the user installed the report.
 
-`siteMap`, `tagged`, and `wrapperMods` start empty during Step 5 and are populated during Step 7 (tagged) or as needed. `report` is written in Step 6b only if the user opts in.
+`siteMap`, `tagged`, and `wrapperMods` start empty during Step 5 and are populated during Step 7 (tagged) or as needed. `report` is **never** written during Step 5 — only in Step 6b if the user opts in.
 
 ### Step 6 — Write instruction files
 
@@ -253,16 +255,11 @@ They should run `/wayfinder` (the Semantic Wayfinder skill). Don't try to retroa
 They should run `/wayfinder --remove`. The skill reads its own manifest in `.wayfinder.json` and strips only the classes it originally added — leaving utility classes and any semantic classes the user wrote by hand untouched. Don't attempt to grep-and-strip classes yourself; it would risk deleting user-authored work.
 ```
 
-### Step 6b — Offer the savings report (optional)
+### Step 6b — Install the savings report (if opted in)
 
-After config and instruction files are written, offer the **savings report**: a `post-commit` hook that, after each commit, estimates how much agent navigation the commit's tagged components saved and records it to a `WAYFINDER_REPORT.md`. It's optional, additive, and never blocks or alters a commit.
+This step **executes** the decision the user already made in Step 3 Q3 — it does not ask again. If the user chose **No** (or it wasn't enabled), skip this entire step: write no `report` block, install nothing.
 
-> Want a savings report? After each commit I can estimate how much agent "detective work" your tagged components saved — printed in your terminal and logged to `WAYFINDER_REPORT.md`.
->
-> 1) Yes, install it
-> 2) No thanks
-
-If the user accepts, fetch the two files from the public repo (same mechanism that delivered this skill — needs network):
+If the user chose **Yes**, install it now. Fetch the two files from the public repo (same mechanism that delivered this skill — needs network):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/selfishprimate/semantic-wayfinder/main/scripts/wayfinder-report.mjs   > .wayfinder-report.mjs
@@ -270,7 +267,7 @@ curl -fsSL https://raw.githubusercontent.com/selfishprimate/semantic-wayfinder/m
 chmod +x .git/hooks/post-commit
 ```
 
-Then write the `report` block into `.wayfinder.json` (the script reads it to decide terminal output and file path — see Step 5 schema).
+Then write the `report` block into `.wayfinder.json` — `{ "enabled": true, "terminal": true, "file": "WAYFINDER_REPORT.md" }` (the script reads it to decide terminal output and file path).
 
 **Hook-manager check (do this before writing `.git/hooks/post-commit`).** If the project already uses a hook manager — look for a `.husky/` directory or a non-default `git config core.hooksPath` (Husky, lefthook, simple-git-hooks) — do **not** write `.git/hooks/post-commit` (it would be ignored or would clash). Instead add the invocation line to that manager's post-commit (e.g. append `node .wayfinder-report.mjs` to `.husky/post-commit`). Still fetch `.wayfinder-report.mjs` to the project root either way.
 
@@ -403,6 +400,32 @@ chore: partial wayfind incremental update
 ```
 
 Update `lastRunAt` in `.wayfinder.json` and include it in the commit. After the commit, show the same partial-completion closing message used in bootstrap Step 9.
+
+---
+
+## Report mode (`/wayfinder --report`)
+
+Triggered when the user passes `--report`. This is how someone who skipped the savings report at bootstrap (or wants to turn it off) manages it later — without re-tagging anything. Editing `.wayfinder.json` by hand is **not** enough to install: the config is only read by the script; the script and hook still have to be fetched and wired up. (Once installed, editing the `report` block *is* enough to toggle `terminal`/`file` — the script reads it each run.)
+
+Requires `.wayfinder.json` to exist (the project must already be bootstrapped). If it doesn't, tell the user to run `/wayfinder` first.
+
+### `/wayfinder --report` (install)
+
+1. Git cleanliness check (same as bootstrap Step 4).
+2. Run the install exactly as in **Step 6b** — fetch `.wayfinder-report.mjs`, install the `post-commit` hook (with the same hook-manager / Husky detection), and write the `report` block (`{ "enabled": true, "terminal": true, "file": "WAYFINDER_REPORT.md" }`) to `.wayfinder.json`. If it's already installed, report that and do nothing.
+3. Commit:
+   ```
+   chore: enable wayfinder savings report
+   ```
+
+### `/wayfinder --report off` (uninstall)
+
+1. Run the uninstall exactly as in **remove mode Step 3c** — delete `.wayfinder-report.mjs`, remove the Wayfinder line from the post-commit hook (or the managed hook), and ask before deleting `WAYFINDER_REPORT.md` (default: keep).
+2. Set `report.enabled` to `false` in `.wayfinder.json` (keep the block so the choice is remembered), or remove the block if the user prefers a clean slate.
+3. Commit:
+   ```
+   chore: disable wayfinder savings report
+   ```
 
 ---
 
